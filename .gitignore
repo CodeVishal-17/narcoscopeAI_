@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Trained models & generated data (regenerate via `python -m narcoscope.train`)
+models/
+data/synthetic_messages.jsonl
+
+# Telethon session files (may contain a live auth session — never commit)
+*.session
+*.session-journal
+
+# Local credentials (TELEGRAM_API_ID, TELEGRAM_API_HASH, etc.) — never commit
+.env
+
+# Scraped data may contain sensitive/investigation material — keep it local
+data/scraped_*.json
+data/whatsapp_exports/
+
+# Keep hand labels? They're small and useful — commit them intentionally, so
+# they are NOT ignored here. Remove the next line if labels are sensitive.
+# data/labels.jsonl
+
+# Django backend
+backend/db.sqlite3
+backend/staticfiles/
+
+# React frontend (Vite)
+frontend/node_modules/
+frontend/dist/

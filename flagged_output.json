@@ -1,0 +1,485 @@
+{
+  "generated_at": "2026-07-06T05:04:37.045156+00:00",
+  "accounts_analyzed": 7,
+  "flagged_accounts": 4,
+  "model_stages": {
+    "rules": true,
+    "ml": true,
+    "llm": false
+  },
+  "reports": [
+    {
+      "account_id": "ig_001",
+      "platform": "instagram",
+      "handle": "@highvibes.plug",
+      "account_type": "profile",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 8.23,
+      "risk_band": "CRITICAL",
+      "flagged_message_count": 2,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 4.5,
+        "mean_message_score": 3.5,
+        "std_message_score": 1.41,
+        "flagged_ratio": 1.0,
+        "bot_command_ratio": 0.0,
+        "link_count": 0,
+        "backup_link_count": 0,
+        "unique_substances": 0,
+        "shared_payment_degree": 1,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [
+        {
+          "text": "New drop 🔌🍬 quality guaranteed, DM for price",
+          "final_prob": 0.97,
+          "decided_by": "ml",
+          "rule_score": 4.5,
+          "ml_prob": 0.97,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "dm for price",
+            "quality guaranteed"
+          ],
+          "matched_emoji": [
+            "🔌",
+            "🍬"
+          ]
+        },
+        {
+          "text": "Stock available for the weekend, safe delivery pan india delivery",
+          "final_prob": 0.953,
+          "decided_by": "ml",
+          "rule_score": 4.5,
+          "ml_prob": 0.953,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "safe delivery",
+            "stock available",
+            "pan india delivery"
+          ],
+          "matched_emoji": []
+        }
+      ],
+      "message_verdicts": [
+        {
+          "text": "New drop 🔌🍬 quality guaranteed, DM for price",
+          "final_prob": 0.97,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Stock available for the weekend, safe delivery pan india delivery",
+          "final_prob": 0.953,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Check our story for today's price list",
+          "final_prob": 0.379,
+          "decided_by": "ml"
+        }
+      ]
+    },
+    {
+      "account_id": "tg_bot_001",
+      "platform": "telegram",
+      "handle": "@candyshop_bot",
+      "account_type": "bot",
+      "source": "file",
+      "is_probable_bot": true,
+      "risk_score": 8.13,
+      "risk_band": "CRITICAL",
+      "flagged_message_count": 2,
+      "total_messages_seen": 4,
+      "features": {
+        "max_message_score": 11.0,
+        "mean_message_score": 4.12,
+        "std_message_score": 4.04,
+        "flagged_ratio": 1.0,
+        "bot_command_ratio": 1.0,
+        "link_count": 0,
+        "backup_link_count": 0,
+        "unique_substances": 3,
+        "shared_payment_degree": 1,
+        "burstiness": 0.0,
+        "total_messages": 4
+      },
+      "evidence_sample": [
+        {
+          "text": "/menu MDMA - ₹2500/g, LSD tabs - ₹800/pc, Molly - ₹2000/g",
+          "final_prob": 1.0,
+          "decided_by": "ml",
+          "rule_score": 11.0,
+          "ml_prob": 1.0,
+          "llm": null,
+          "matched_terms": [
+            "mdma",
+            "lsd",
+            "molly"
+          ],
+          "matched_phrases": [],
+          "matched_emoji": []
+        },
+        {
+          "text": "/price Send your city for delivery estimate. Pan India delivery available",
+          "final_prob": 0.822,
+          "decided_by": "ml",
+          "rule_score": 3.0,
+          "ml_prob": 0.822,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "pan india delivery"
+          ],
+          "matched_emoji": []
+        }
+      ],
+      "message_verdicts": [
+        {
+          "text": "/start Welcome to Candy Shop! Type /menu to see our catalog 🍬",
+          "final_prob": 0.151,
+          "decided_by": "ml"
+        },
+        {
+          "text": "/menu MDMA - ₹2500/g, LSD tabs - ₹800/pc, Molly - ₹2000/g",
+          "final_prob": 1.0,
+          "decided_by": "ml"
+        },
+        {
+          "text": "/price Send your city for delivery estimate. Pan India delivery available",
+          "final_prob": 0.822,
+          "decided_by": "ml"
+        },
+        {
+          "text": "/order Please share quantity and delivery address",
+          "final_prob": 0.176,
+          "decided_by": "ml"
+        }
+      ]
+    },
+    {
+      "account_id": "wa_001",
+      "platform": "whatsapp",
+      "handle": "Weekend Vibes Group",
+      "account_type": "group",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 7.95,
+      "risk_band": "CRITICAL",
+      "flagged_message_count": 2,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 5.5,
+        "mean_message_score": 3.67,
+        "std_message_score": 1.43,
+        "flagged_ratio": 1.0,
+        "bot_command_ratio": 0.0,
+        "link_count": 1,
+        "backup_link_count": 1,
+        "unique_substances": 3,
+        "shared_payment_degree": 1,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [
+        {
+          "text": "Ganja and charas available, no minors please",
+          "final_prob": 0.975,
+          "decided_by": "ml",
+          "rule_score": 5.5,
+          "ml_prob": 0.975,
+          "llm": null,
+          "matched_terms": [
+            "charas",
+            "ganja"
+          ],
+          "matched_phrases": [
+            "no minors"
+          ],
+          "matched_emoji": []
+        },
+        {
+          "text": "Acid tabs 800 rs per piece, quality guaranteed",
+          "final_prob": 0.928,
+          "decided_by": "ml",
+          "rule_score": 3.5,
+          "ml_prob": 0.928,
+          "llm": null,
+          "matched_terms": [
+            "acid tabs"
+          ],
+          "matched_phrases": [
+            "quality guaranteed"
+          ],
+          "matched_emoji": []
+        }
+      ],
+      "message_verdicts": [
+        {
+          "text": "Ganja and charas available, no minors please",
+          "final_prob": 0.975,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Acid tabs 800 rs per piece, quality guaranteed",
+          "final_prob": 0.928,
+          "decided_by": "ml"
+        },
+        {
+          "text": "New channel link if this group gets removed: wa.me/xxxxx",
+          "final_prob": 0.143,
+          "decided_by": "ml"
+        }
+      ]
+    },
+    {
+      "account_id": "tg_001",
+      "platform": "telegram",
+      "handle": "@partysupplyindia",
+      "account_type": "channel",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 7.68,
+      "risk_band": "CRITICAL",
+      "flagged_message_count": 3,
+      "total_messages_seen": 5,
+      "features": {
+        "max_message_score": 11.5,
+        "mean_message_score": 5.1,
+        "std_message_score": 3.87,
+        "flagged_ratio": 0.8,
+        "bot_command_ratio": 0.0,
+        "link_count": 1,
+        "backup_link_count": 1,
+        "unique_substances": 4,
+        "shared_payment_degree": 1,
+        "burstiness": 0.0,
+        "total_messages": 5
+      },
+      "evidence_sample": [
+        {
+          "text": "New stock available 🚀 MDMA and LSD blotters, price list on DM",
+          "final_prob": 1.0,
+          "decided_by": "ml",
+          "rule_score": 11.5,
+          "ml_prob": 1.0,
+          "llm": null,
+          "matched_terms": [
+            "mdma",
+            "lsd",
+            "blotters"
+          ],
+          "matched_phrases": [
+            "stock available",
+            "price list"
+          ],
+          "matched_emoji": [
+            "🚀"
+          ]
+        },
+        {
+          "text": "Mephedrone ❄️ back in stock, wholesale rate for bulk orders",
+          "final_prob": 0.966,
+          "decided_by": "ml",
+          "rule_score": 5.5,
+          "ml_prob": 0.966,
+          "llm": null,
+          "matched_terms": [
+            "mephedrone"
+          ],
+          "matched_phrases": [
+            "wholesale rate"
+          ],
+          "matched_emoji": [
+            "❄️"
+          ]
+        },
+        {
+          "text": "DM to order, COD available in Mumbai and Pune, discreet packing guaranteed",
+          "final_prob": 0.946,
+          "decided_by": "ml",
+          "rule_score": 6.0,
+          "ml_prob": 0.946,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "dm to order",
+            "cod available",
+            "discreet packing"
+          ],
+          "matched_emoji": []
+        }
+      ],
+      "message_verdicts": [
+        {
+          "text": "New stock available 🚀 MDMA and LSD blotters, price list on DM",
+          "final_prob": 1.0,
+          "decided_by": "ml"
+        },
+        {
+          "text": "DM to order, COD available in Mumbai and Pune, discreet packing guaranteed",
+          "final_prob": 0.946,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Mephedrone ❄️ back in stock, wholesale rate for bulk orders",
+          "final_prob": 0.966,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Happy Diwali to all our loyal customers!",
+          "final_prob": 0.03,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Backup channel link in case this one gets banned: t.me/partysupply2",
+          "final_prob": 0.166,
+          "decided_by": "ml"
+        }
+      ]
+    },
+    {
+      "account_id": "ig_002",
+      "platform": "instagram",
+      "handle": "@fitness_with_ravi",
+      "account_type": "profile",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 0.26,
+      "risk_band": "LOW",
+      "flagged_message_count": 0,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 0.0,
+        "mean_message_score": 0.0,
+        "std_message_score": 0.0,
+        "flagged_ratio": 0.0,
+        "bot_command_ratio": 0.0,
+        "link_count": 0,
+        "backup_link_count": 0,
+        "unique_substances": 0,
+        "shared_payment_degree": 0,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [],
+      "message_verdicts": [
+        {
+          "text": "Morning workout routine, 30 min HIIT session",
+          "final_prob": 0.017,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Protein shake recipe for post-workout recovery",
+          "final_prob": 0.02,
+          "decided_by": "ml"
+        },
+        {
+          "text": "New gym opening in Indore next month!",
+          "final_prob": 0.041,
+          "decided_by": "ml"
+        }
+      ]
+    },
+    {
+      "account_id": "wa_002",
+      "platform": "whatsapp",
+      "handle": "Colony Residents Group",
+      "account_type": "group",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 0.23,
+      "risk_band": "LOW",
+      "flagged_message_count": 0,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 0.0,
+        "mean_message_score": 0.0,
+        "std_message_score": 0.0,
+        "flagged_ratio": 0.0,
+        "bot_command_ratio": 0.0,
+        "link_count": 0,
+        "backup_link_count": 0,
+        "unique_substances": 0,
+        "shared_payment_degree": 0,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [],
+      "message_verdicts": [
+        {
+          "text": "Reminder: society meeting tomorrow at 6pm",
+          "final_prob": 0.031,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Water supply will be interrupted from 10am-2pm",
+          "final_prob": 0.032,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Please keep the parking area clear",
+          "final_prob": 0.026,
+          "decided_by": "ml"
+        }
+      ]
+    },
+    {
+      "account_id": "tg_002",
+      "platform": "telegram",
+      "handle": "@delhi_news_updates",
+      "account_type": "channel",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 0.2,
+      "risk_band": "LOW",
+      "flagged_message_count": 0,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 0.0,
+        "mean_message_score": 0.0,
+        "std_message_score": 0.0,
+        "flagged_ratio": 0.0,
+        "bot_command_ratio": 0.0,
+        "link_count": 0,
+        "backup_link_count": 0,
+        "unique_substances": 0,
+        "shared_payment_degree": 0,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [],
+      "message_verdicts": [
+        {
+          "text": "Breaking: Delhi traffic police announce new rules for odd-even scheme",
+          "final_prob": 0.015,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Weather update: heavy rainfall expected this weekend",
+          "final_prob": 0.016,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Join our channel for daily news digest",
+          "final_prob": 0.032,
+          "decided_by": "ml"
+        }
+      ]
+    }
+  ],
+  "linked_account_clusters": {
+    "partysupply@upi": [
+      "ig_001",
+      "tg_001"
+    ],
+    "candyshop@upi": [
+      "tg_bot_001",
+      "wa_001"
+    ]
+  }
+}

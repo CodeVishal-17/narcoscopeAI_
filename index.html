@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NarcoScope AI — Cross-platform narcotics detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --base: #0a0d13;
+        --panel: #111621;
+        --panel-2: #161c29;
+        --border: #232b3a;
+        --border-strong: #324158;
+        --text-primary: #edeff4;
+        --text-secondary: #9aa4b5;
+        --text-muted: #5e6b80;
+        --accent: #3b82f6;
+        --accent-dim: #12213b;
+        --accent-glow: rgba(59, 130, 246, 0.5);
+        --critical: #e5484d;
+        --critical-glow: rgba(229, 72, 77, 0.55);
+        --high: #f5a623;
+        --low: #4ade80;
+        --mono: "IBM Plex Mono", monospace;
+        --sans: "IBM Plex Sans", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--base);
+        color: var(--text-primary);
+        font-family: var(--sans);
+        overflow-x: hidden;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /* ---------- top nav ---------- */
+      .nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 36px;
+        backdrop-filter: blur(10px);
+        background: rgba(10, 13, 19, 0.6);
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .nav-brand .mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid var(--accent);
+        background: var(--accent-dim);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent);
+        font-size: 11px;
+      }
+      .nav-links {
+        display: flex;
+        gap: 28px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .nav-links a:hover {
+        color: var(--text-primary);
+      }
+      .nav-cta {
+        font-family: var(--mono);
+        font-size: 12px;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        padding: 7px 14px;
+        border-radius: 5px;
+      }
+      .nav-cta:hover {
+        background: var(--accent-dim);
+      }
+
+      /* ---------- hero ---------- */
+      .hero {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 120px 20px 60px;
+        overflow: hidden;
+      }
+
+      .radar-wrap {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 0;
+        opacity: 0.55;
+      }
+      .radar-ring {
+        position: absolute;
+        border: 1px solid var(--border-strong);
+        border-radius: 50%;
+      }
+      .r1 {
+        width: 340px;
+        height: 340px;
+      }
+      .r2 {
+        width: 560px;
+        height: 560px;
+        border-color: #1c2536;
+      }
+      .r3 {
+        width: 800px;
+        height: 800px;
+        border-color: #161d2b;
+      }
+      .radar-sweep {
+        position: absolute;
+        width: 800px;
+        height: 800px;
+        border-radius: 50%;
+        background: conic-gradient(
+          from 0deg,
+          transparent 0deg,
+          transparent 300deg,
+          rgba(59, 130, 246, 0.35) 340deg,
+          rgba(59, 130, 246, 0.05) 360deg
+        );
+        animation: spin 5s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .blip {
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--critical);
+        box-shadow: 0 0 10px 2px var(--critical-glow);
+      }
+      .blip::after {
+        content: "";
+        position: absolute;
+        inset: -8px;
+        border: 1px solid var(--critical);
+        border-radius: 50%;
+        opacity: 0;
+        animation: ping 3s ease-out infinite;
+      }
+      .blip.amber {
+        background: var(--high);
+        box-shadow: 0 0 10px 2px rgba(245, 166, 35, 0.5);
+      }
+      .blip.amber::after {
+        border-color: var(--high);
+      }
+      @keyframes ping {
+        0% {
+          opacity: 0.7;
+          transform: scale(0.4);
+        }
+        80% {
+          opacity: 0;
+          transform: scale(2.6);
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .eyebrow {
+        position: relative;
+        z-index: 1;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 22px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+      }
+      .eyebrow .liveDot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--critical);
+        box-shadow: 0 0 6px 1px var(--critical-glow);
+        animation: blink 1.4s ease-in-out infinite;
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.25;
+        }
+      }
+
+      .titleWrap {
+        position: relative;
+        z-index: 1;
+      }
+      h1.brand {
+        font-family: var(--mono);
+        font-weight: 600;
+        font-size: clamp(42px, 8vw, 92px);
+        letter-spacing: -0.01em;
+        line-height: 1;
+        color: var(--text-primary);
+        text-shadow: 0 0 24px var(--accent-glow);
+        animation: breathe 3.6s ease-in-out infinite;
+      }
+      h1.brand span {
+        color: var(--accent);
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          text-shadow:
+            0 0 18px var(--accent-glow),
+            0 0 2px rgba(255, 255, 255, 0.2);
+        }
+        50% {
+          text-shadow:
+            0 0 34px var(--accent-glow),
+            0 0 6px rgba(255, 255, 255, 0.4);
+        }
+      }
+      /* occasional HUD glitch flicker, subtle, not seizure-inducing */
+      h1.brand {
+        animation:
+          breathe 3.6s ease-in-out infinite,
+          glitch 7s steps(1) infinite;
+      }
+      @keyframes glitch {
+        0%,
+        96%,
+        100% {
+          transform: translate(0, 0);
+        }
+        97% {
+          transform: translate(-1px, 0);
+          text-shadow:
+            1px 0 var(--critical),
+            -1px 0 var(--accent);
+        }
+        98% {
+          transform: translate(1px, 0);
+          text-shadow:
+            -1px 0 var(--critical),
+            1px 0 var(--accent);
+        }
+        99% {
+          transform: translate(0, 0);
+        }
+      }
+
+      .tagline {
+        position: relative;
+        z-index: 1;
+        font-size: clamp(15px, 2vw, 18px);
+        color: var(--text-secondary);
+        max-width: 620px;
+        margin: 22px auto 0;
+        line-height: 1.6;
+      }
+      .tagline strong {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+
+      .hero-ctas {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 14px;
+        margin-top: 36px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .btn {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 13px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: #2f6fdb;
+      }
+      .btn-secondary {
+        border-color: var(--border-strong);
+        color: var(--text-secondary);
+      }
+      .btn-secondary:hover {
+        color: var(--text-primary);
+        border-color: var(--accent);
+      }
+
+      .platform-row {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 34px;
+        margin-top: 56px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .platform-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-muted);
+        padding: 8px 14px;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+      }
+      .platform-chip svg {
+        width: 14px;
+        height: 14px;
+      }
+      .platform-chip.scanning {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      /* ---------- stats strip ---------- */
+      .stats-strip {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        max-width: 920px;
+        margin: 70px auto 0;
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .stats-strip .cell {
+        padding: 22px 18px;
+        text-align: center;
+        border-right: 1px solid var(--border);
+        background: var(--panel);
+      }
+      .stats-strip .cell:last-child {
+        border-right: none;
+      }
+      .stats-strip .num {
+        font-family: var(--mono);
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .stats-strip .num.crit {
+        color: var(--critical);
+      }
+      .stats-strip .lbl {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* ---------- sections ---------- */
+      section {
+        padding: 100px 24px;
+        max-width: 1080px;
+        margin: 0 auto;
+      }
+      .section-eyebrow {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 10px;
+      }
+      .section-title {
+        font-size: clamp(24px, 3.4vw, 34px);
+        font-weight: 600;
+        max-width: 560px;
+        line-height: 1.25;
+        margin-bottom: 48px;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .feature {
+        background: var(--panel);
+        padding: 30px 26px;
+      }
+      .feature .ic {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 18px;
+        color: var(--accent);
+      }
+      .feature h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .feature p {
+        font-size: 13.5px;
+        color: var(--text-secondary);
+        line-height: 1.65;
+      }
+
+      /* ---------- flow section ---------- */
+      .flow {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .flow-step {
+        flex: 1;
+        min-width: 190px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        padding: 22px 20px;
+        position: relative;
+      }
+      .flow-step + .flow-step {
+        border-left: none;
+      }
+      .flow-step .tag {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--accent);
+        letter-spacing: 0.1em;
+        margin-bottom: 10px;
+        display: block;
+      }
+      .flow-step h4 {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .flow-step p {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+      .flow-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        color: var(--text-muted);
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+
+      /* ---------- legal strip ---------- */
+      .legal-box {
+        background: var(--panel);
+        border: 1px solid var(--border-strong);
+        border-left: 3px solid var(--high);
+        border-radius: 8px;
+        padding: 22px 26px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.7;
+      }
+      .legal-box strong {
+        color: var(--text-primary);
+      }
+
+      /* ---------- final cta ---------- */
+      .final-cta {
+        text-align: center;
+        padding: 100px 24px 120px;
+      }
+      .final-cta h2 {
+        font-family: var(--mono);
+        font-size: clamp(26px, 4vw, 40px);
+        margin-bottom: 16px;
+      }
+      .final-cta p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-bottom: 30px;
+      }
+
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 26px 36px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: var(--text-muted);
+        font-family: var(--mono);
+      }
+
+      @media (max-width: 760px) {
+        .nav-links {
+          display: none;
+        }
+        .stats-strip {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .stats-strip .cell:nth-child(2n) {
+          border-right: none;
+        }
+        .feature-grid {
+          grid-template-columns: 1fr;
+        }
+        .flow {
+          flex-direction: column;
+        }
+        .flow-step + .flow-step {
+          border-left: 1px solid var(--border);
+          border-top: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav-brand"><span class="mark">N</span> NARCOSCOPE AI</div>
+      <div class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="#platforms">Platforms</a>
+        <a href="#legal">Legal scope</a>
+      </div>
+      <a class="nav-cta" href="dashboard.html">Open Dashboard →</a>
+    </nav>
+
+    <section class="hero">
+      <div class="radar-wrap">
+        <div class="radar-ring r3"></div>
+        <div class="radar-ring r2"></div>
+        <div class="radar-ring r1"></div>
+        <div class="radar-sweep"></div>
+        <div
+          class="blip"
+          style="top: 32%; left: 44%; animation-delay: 0.2s"
+        ></div>
+        <div class="blip amber" style="top: 58%; left: 61%"></div>
+        <div
+          class="blip"
+          style="top: 47%; left: 33%; animation-delay: 1s"
+        ></div>
+        <div
+          class="blip amber"
+          style="top: 65%; left: 40%; animation-delay: 1.6s"
+        ></div>
+      </div>
+
+      <div class="eyebrow">
+        <span class="liveDot"></span> LIVE PROTOTYPE — SYNTHETIC DEMO DATA
+      </div>
+
+      <div class="titleWrap">
+        <h1 class="brand">Narco<span>Scope</span> AI</h1>
+      </div>
+
+      <p class="tagline">
+        Detects <strong>drug-sale activity</strong> across Telegram channels,
+        WhatsApp groups, and Instagram handles in India — flags it, scores the
+        risk, and builds the evidence trail investigators need for lawful
+        action.
+      </p>
+
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="dashboard.html"
+          >Open Investigator Dashboard →</a
+        >
+        <a class="btn btn-secondary" href="#how">See how it works</a>
+      </div>
+
+      <div class="platform-row">
+        <div class="platform-chip scanning">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M21 3 3 10.5l7 2.5m11-10L14 21l-4-8" />
+          </svg>
+          Telegram — scanning
+        </div>
+        <div class="platform-chip scanning">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2Z" />
+            <path
+              d="M8.5 8.5c.5 3 3 5.5 6 6l1.2-1.2c.3-.3.8-.4 1.2-.2l2 1c.4.2.6.7.5 1.1-.4 1.6-2 2.6-3.6 2.3-4.4-.8-7.9-4.3-8.7-8.7-.3-1.6.7-3.2 2.3-3.6.4-.1.9.1 1.1.5l1 2c.2.4.1.9-.2 1.2Z"
+            />
+          </svg>
+          WhatsApp — public groups
+        </div>
+        <div class="platform-chip scanning">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="5" />
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="17.5" cy="6.5" r="1" />
+          </svg>
+          Instagram — scanning
+        </div>
+      </div>
+
+      <div class="stats-strip">
+        <div class="cell">
+          <div class="num">7</div>
+          <div class="lbl">Accounts analyzed</div>
+        </div>
+        <div class="cell">
+          <div class="num crit">4</div>
+          <div class="lbl">Flagged high/critical</div>
+        </div>
+        <div class="cell">
+          <div class="num">2</div>
+          <div class="lbl">Linked operator clusters</div>
+        </div>
+        <div class="cell">
+          <div class="num">3</div>
+          <div class="lbl">Platforms covered</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="section-eyebrow">Pipeline</div>
+      <div class="section-title">
+        From a public post to an evidence-backed lead — four stages, a human in
+        the loop before any of it leaves the system.
+      </div>
+
+      <div class="flow">
+        <div class="flow-step">
+          <span class="tag">01 · INGEST</span>
+          <h4>Watch public channels</h4>
+          <p>
+            Continuously reads public Telegram channels/bots, WhatsApp groups
+            discovered via shared invite links, and Instagram content — nothing
+            private, nothing intercepted.
+          </p>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <span class="tag">02 · SCORE</span>
+          <h4>Flag &amp; score</h4>
+          <p>
+            Keyword, emoji, and behavior-pattern engine scores every message;
+            bot-command patterns catch automated storefronts.
+          </p>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <span class="tag">03 · LINK</span>
+          <h4>Correlate identities</h4>
+          <p>
+            Groups accounts across platforms that share a payment handle or bio
+            pattern — the legal, public-data OSINT layer.
+          </p>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <span class="tag">04 · ESCALATE</span>
+          <h4>Analyst review</h4>
+          <p>
+            A human investigator reviews the dossier and, if warranted, submits
+            it to the platform for lawful subscriber-record disclosure.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="platforms">
+      <div class="section-eyebrow">Detection engine</div>
+      <div class="section-title">
+        Built to catch how trafficking actually shows up on each platform — not
+        a generic keyword filter.
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature">
+          <div class="ic">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 3 3 10.5l7 2.5m11-10L14 21l-4-8" />
+            </svg>
+          </div>
+          <h3>Telegram bots &amp; channels</h3>
+          <p>
+            Detects <code>/menu</code>-style command bots, price-list patterns,
+            and "backup channel" links posted when a storefront gets banned and
+            reappears under a new name.
+          </p>
+        </div>
+        <div class="feature">
+          <div class="ic">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="5" />
+              <circle cx="12" cy="12" r="4" />
+              <circle cx="17.5" cy="6.5" r="1" />
+            </svg>
+          </div>
+          <h3>Instagram handles &amp; stories</h3>
+          <p>
+            Reads coded bios and caption patterns ("DM for price," emoji
+            substitution) that evade plain keyword filters.
+          </p>
+        </div>
+        <div class="feature">
+          <div class="ic">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </div>
+          <h3>Cross-platform correlation</h3>
+          <p>
+            Same UPI ID or payment handle showing up on a Telegram channel and
+            an Instagram profile is treated as one operator, not two separate
+            leads.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="legal">
+      <div class="section-eyebrow">Scope &amp; limits</div>
+      <div class="section-title">
+        What this system does — and deliberately does not do.
+      </div>
+      <div class="legal-box">
+        <strong
+          >IP addresses, phone numbers, and email IDs are not extracted from
+          public content</strong
+        >
+        — platforms don't expose that data, and no legitimate tool can.
+        NarcoScope AI's job ends at building a well-evidenced dossier; obtaining
+        subscriber records requires an investigator to submit that evidence to
+        the platform through lawful process — Section 91 CrPC/BNSS, or an MLAT
+        request for foreign platforms. Every escalation from this system passes
+        through human analyst review before it goes anywhere.
+      </div>
+    </section>
+
+    <div class="final-cta">
+      <h2>See it flag activity in real time</h2>
+      <p>
+        Prototype runs on synthetic sample data — safe to explore, easy to
+        extend.
+      </p>
+      <a class="btn btn-primary" href="dashboard.html"
+        >Open Investigator Dashboard →</a
+      >
+    </div>
+
+    <footer>
+      <div>NARCOSCOPE AI · PROTOTYPE BUILD</div>
+      <div>Synthetic data only · No live platform connections</div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+================================================================================
+NARCOSCOPE AI — QUICK SUMMARY
+================================================================================
+
+WHAT IT DOES
+  Watches Telegram (live), Instagram & WhatsApp (via upload), scores every
+  message for drug-sale language (English + Hindi/Hinglish), rolls scores
+  into a per-account risk level (LOW/MEDIUM/HIGH/CRITICAL), links accounts
+  across platforms that share a payment ID (= same operator), and lets an
+  investigator generate a hash-stamped evidence dossier. A human always
+  reviews before anything escalates — nothing is automatic.
+
+THREE LAYERS
+  1. narcoscope/  (Python)   — the detection engine. Works standalone, no
+                                 server needed: `python -m narcoscope.pipeline`
+  2. backend/     (Django)    — wraps the engine with a database + REST API,
+                                 handles live Telegram scraping in the background
+  3. frontend/    (React)     — the dashboard UI. Talks to Django over HTTP only.
+
+HOW A MESSAGE GETS SCORED (the "hybrid classifier")
+  Rules (keyword/phrase/emoji match, English + Hindi)
+     -> ML model (trained classifier, catches things rules miss)
+        -> if still ambiguous, optional LLM double-check
+  Whichever stage is more confident wins; every flag records WHY (which
+  words matched, which stage decided) — nothing is a black box.
+
+HOW ACCOUNTS GET LINKED
+  If two accounts (even on different platforms) list the same payment
+  handle (e.g. same UPI ID), they're flagged as "likely one operator" and
+  shown together in a network graph.
+
+INGESTION, PER PLATFORM
+  Telegram   -> fully live (official API, one-time login via login_telegram.py)
+  Instagram  -> manual: investigator uploads a JSON file (template provided)
+  WhatsApp   -> manual: investigator uploads the app's own "Export chat" .txt
+  (Instagram/WhatsApp have no legitimate live-scraping option — stated on
+  purpose, not a bug.)
+
+ACCURACY
+  Real, measured on a held-out test set (never used in training):
+  precision 0.97, recall 1.0, F1 0.985 — shown live in the dashboard, with
+  an automatic warning if the test set is ever too small to trust.
+
+EVIDENCE DOSSIER
+  One click on a flagged account generates a printable report: the
+  flagged messages, a SHA-256 hash of each (proves it wasn't tampered
+  with), linked accounts, and a legal note pointing to lawful process
+  (Section 91 BNSS, Section 63 BSA) — this supports an investigation, it
+  is not itself a legal filing.
+
+TO RUN IT
+  Terminal 1: cd backend  && python manage.py runserver 8001
+  Terminal 2: cd frontend && npm run dev -- --port 5173
+  Open http://localhost:5173
+
+WHAT IT DELIBERATELY DOES NOT DO
+  - Doesn't extract IPs/phone numbers/emails (platforms don't expose these)
+  - Doesn't auto-report or auto-escalate anything
+  - Doesn't live-scrape Instagram/WhatsApp (no legitimate API exists)
+
+Full technical detail (file-by-file, every function): PROTOTYPE_EXPLAINED.txt
+================================================================================

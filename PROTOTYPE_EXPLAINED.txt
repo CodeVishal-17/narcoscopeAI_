@@ -1,0 +1,1021 @@
+================================================================================
+NARCOSCOPE AI — COMPLETE PROTOTYPE EXPLANATION
+Cross-platform narcotics-trade detection for law enforcement (Gwalior Police
+Hackathon build)
+================================================================================
+
+This document explains, in plain language, what this project is, how every
+piece of it works, how data flows from a real Telegram channel (or an
+uploaded Instagram/WhatsApp file) all the way to a screen an investigator
+looks at, and where every file lives. Read top to bottom for the full story,
+or jump to a section using the headers below.
+
+CONTENTS
+  1.  What this project is, in one paragraph
+  2.  The big picture: three layers
+  3.  End-to-end data flow (the full journey of one message)
+  4.  The detection engine (narcoscope/) — file by file
+  5.  The backend (Django REST API) — file by file
+  6.  The frontend (React dashboard) — file by file
+  7.  How the three layers talk to each other
+  8.  Ingestion: how data gets IN for each platform
+  9.  Scoring: how a message becomes a risk number
+  10. Account-level risk and cross-account linking
+  11. The labeling + training + evaluation loop (how accuracy is measured)
+  12. The evidence dossier (court-readiness)
+  13. The React dashboard, screen by screen
+  14. Mobile responsiveness
+  15. Configuration, secrets, and environment files
+  16. How to run everything from scratch
+  17. Known limitations (stated on purpose, not hidden)
+  18. Glossary of terms used in the code
+
+================================================================================
+1. WHAT THIS PROJECT IS, IN ONE PARAGRAPH
+================================================================================
+
+NarcoScope AI watches public content on Telegram (live, via the official
+API), and accepts exported/uploaded content from Instagram and WhatsApp
+(because neither platform allows live third-party scraping legally), scores
+every message for drug-sale-like language using a three-stage hybrid
+classifier (rules -> trained ML model -> optional LLM for ambiguous cases),
+rolls per-message scores up into an account-level risk score and band (LOW /
+MEDIUM / HIGH / CRITICAL), links accounts across platforms that share a
+payment handle (e.g. the same UPI ID on a Telegram channel and an Instagram
+profile = probably one operator running two storefronts), and presents all
+of this in an investigator dashboard that can also generate a hash-stamped
+"evidence dossier" a human analyst can carry into a lawful investigation.
+Nothing in the system auto-reports anyone or extracts private data (IP,
+phone, email) — every escalation requires a human to look at it and decide.
+
+================================================================================
+2. THE BIG PICTURE: THREE LAYERS
+================================================================================
+
+    ┌─────────────────────────────────────────────────────────────┐
+    │  LAYER 1 — THE ENGINE  (narcoscope/  — plain Python package) │
+    │  Ingests raw messages, scores them, rolls up account risk,   │
+    │  links accounts, trains/evaluates the ML model.              │
+    │  This layer has NO web framework in it — it's a library you  │
+    │  could import from anywhere (CLI, Django, a notebook, etc).  │
+    └─────────────────────────────────────────────────────────────┘
+                              │  imported by
+                              ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  LAYER 2 — THE BACKEND  (backend/  — Django + Django REST    │
+    │  Framework)                                                   │
+    │  Wraps the engine with a database (so scan results persist   │
+    │  as history, not just one JSON file), a REST API, background │
+    │  threads for slow operations (Telegram scraping), and the    │
+    │  evidence-dossier builder.                                    │
+    └─────────────────────────────────────────────────────────────┘
+                              │  HTTP / JSON, via fetch()
+                              ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │  LAYER 3 — THE FRONTEND  (frontend/  — React + Vite)          │
+    │  Two pages: a marketing/landing page, and the investigator    │
+    │  dashboard (filters, account table, evidence drawer, live     │
+    │  Telegram ingestion form, operator network graph, model       │
+    │  accuracy panel, dossier download).                           │
+    └─────────────────────────────────────────────────────────────┘
+
+Why split it this way? The engine (Layer 1) is the part that actually does
+narcotics detection — it should be understandable and testable on its own,
+with no web server required (you can literally run
+`python -m narcoscope.pipeline` from a terminal with zero servers running
+and get a JSON result). The backend (Layer 2) adds persistence and a network
+API around it. The frontend (Layer 3) is just a UI for humans — it never
+talks to the engine directly, only through the backend's REST API.
+
+================================================================================
+3. END-TO-END DATA FLOW (the full journey of one message)
+================================================================================
+
+Concrete example: an investigator wants to check a public Telegram channel
+called @somechannel for drug-sale activity.
+
+  STEP 1 — INGEST
+    The investigator types "@somechannel" into the dashboard's Telegram
+    panel and clicks "Scan channels".
+    -> React (TelegramPanel.jsx) calls api.startTelegramScan(["@somechannel"])
+    -> Django view (TelegramScanView) creates an IngestJob row in the
+       database and starts a background Python thread (no Celery/Redis
+       needed at this scale — see section 5).
+    -> That thread calls narcoscope.ingestion.telegram_ingestor.
+       TelegramIngestor().fetch(["@somechannel"]), which uses Telethon (the
+       official Telegram client library) to log in with YOUR saved session
+       (telegram.session, created once by login_telegram.py) and download
+       up to 200 recent messages from that channel.
+    -> Each message becomes a RawMessage(text=..., timestamp=..., ...) and
+       the whole channel becomes one RawAccount(handle="@somechannel",
+       platform="telegram", messages=[...]).
+
+  STEP 2 — SCORE (this is the "hybrid classifier", see section 9)
+    For every message text, narcoscope.model.hybrid.HybridClassifier runs:
+      (a) RULES — narcoscope.model.rules.score_message() checks the text
+          against dictionaries of drug-substance names (English AND Hindi/
+          Hinglish), sale-behavior phrases, suspicious emoji, bot-command
+          patterns, and price patterns. Produces a rule_score and a
+          rule_prob (0 to 1).
+      (b) ML — if a trained model exists (models/message_classifier.joblib),
+          narcoscope.model.ml.MLClassifier predicts a probability using a
+          scikit-learn pipeline (TF-IDF text features + engineered numeric
+          features -> logistic regression).
+      (c) RULE-VS-ML RECONCILIATION — the higher of rule_prob and ml_prob
+          wins. This was a deliberate fix: the ML model is trained mostly
+          on English, so without this, a strong Hindi/Hinglish rule hit
+          could be silently overridden by a weak English-trained ML score.
+      (d) LLM (optional, off by default) — if the combined probability
+          lands in an "ambiguous" band (roughly 0.35-0.75) AND the LLM
+          stage is enabled (needs an ANTHROPIC_API_KEY), narcoscope.model.
+          llm.LLMClassifier asks Claude Haiku to adjudicate that one
+          message. This only runs on ambiguous cases to keep cost bounded.
+    Each message ends up as a MessageVerdict: final_prob, is_flagged
+    (prob >= 0.5), decided_by ("rules"/"ml"/"llm"), plus the underlying
+    signals (which words/phrases/emoji matched) for evidence.
+
+  STEP 3 — ACCOUNT ROLLUP
+    narcoscope.pipeline.analyze() takes all message verdicts for the
+    account and combines them into one account-level risk_score:
+      risk_score = (worst_message_prob * 0.4)
+                 + (average_message_prob * 0.35)
+                 + (fraction_of_messages_flagged * 0.25)
+                 then scaled to a 0-10 range, +1.0 bonus if the account
+                 looks automated (a bot, or >30% of messages are bot
+                 commands like /menu or /order).
+    That score maps to a band via narcoscope.config.RISK_BANDS:
+      >= 7.0 -> CRITICAL, >= 4.0 -> HIGH, >= 2.0 -> MEDIUM, else LOW.
+
+  STEP 4 — CROSS-ACCOUNT LINKING
+    narcoscope.pipeline._payment_index() groups every account by the
+    payment_handles it lists (e.g. a UPI ID like "someone@upi"). Any handle
+    used by 2+ accounts becomes a "linked cluster" — the system's way of
+    saying "these are probably the same operator running multiple
+    storefronts across platforms."
+
+  STEP 5 — PERSIST (this is where Layer 2, the backend, takes over)
+    backend/scanner/services.py's run_pipeline_on_accounts() takes the
+    output of analyze() and writes it into the database as:
+      - one ScanRun row (this batch's metadata: source, timestamp, counts)
+      - one AccountRecord row per account (risk score/band, evidence,
+        per-message verdicts, everything)
+      - one LinkedCluster row per shared-payment-handle group
+    This is what makes scan history possible — every run is a permanent
+    row, not an overwritten file.
+
+  STEP 6 — SERVE
+    The React dashboard polls the background job's status
+    (GET /api/jobs/<id>/) every 2 seconds. When it flips to "done", the
+    frontend re-fetches GET /api/scans/latest/ and re-renders the account
+    table, stats, alert banner, and operator-network graph with the new
+    data — all live, no page reload.
+
+  STEP 7 — INVESTIGATE
+    The investigator clicks the flagged account in the table. React fetches
+    GET /api/accounts/<id>/ (the FULL record, including all per-message
+    verdicts and evidence). The evidence drawer shows the top-3 highest-
+    confidence flagged messages, which terms/phrases/emoji matched, and any
+    linked accounts (same payment handle). Clicking "Generate legal-request
+    dossier" fetches GET /api/accounts/<id>/dossier/, which computes a
+    SHA-256 hash of every piece of evidence server-side and opens a
+    printable HTML page (Save-as-PDF) with a Section 63 Bharatiya Sakshya
+    Adhiniyam evidentiary note.
+
+That's the whole system. Everything below goes deeper into each piece.
+
+================================================================================
+4. THE DETECTION ENGINE (narcoscope/) — FILE BY FILE
+================================================================================
+
+narcoscope/config.py
+  Central configuration. Holds:
+    - file paths (where sample data, labels, the trained model live)
+    - RISK_BANDS (score thresholds -> LOW/MEDIUM/HIGH/CRITICAL)
+    - LLM_ESCALATE_LOW / LLM_ESCALATE_HIGH (the "ambiguous" probability band
+      that gets escalated to the LLM stage)
+    - SUBSTANCE_TERMS — dict of {term: weight}, e.g. "mdma": 3.0. Includes
+      English AND Hindi/Devanagari/Hinglish terms (चिट्टा, गांजा, chitta,
+      garda, afeem, maal, ...).
+    - BEHAVIORAL_PHRASES — dict of sale-behavior phrases in English and
+      Hindi/Hinglish ("dm to order", "रेट पूछो", "maal hai", ...).
+    - EMOJI_SIGNALS — suspicious emoji (🔌 "the plug", 💊, ❄️, etc).
+    - Loads a local .env file at the repo root via python-dotenv, so
+      TELEGRAM_API_ID / TELEGRAM_API_HASH / ANTHROPIC_API_KEY /
+      NARCOSCOPE_LLM don't need to be re-typed into every terminal.
+  This file also has a comment explaining WHY the keyword lists are
+  intentionally limited to public-scope terms: a real deployment's
+  evasion-resistant slang dictionary should live in a restricted,
+  analyst-maintained module, not in public source code — because
+  publishing it is itself a how-to-evade-detection guide.
+
+narcoscope/ingestion/  — turns raw platform data into a common shape
+  base.py
+    Defines RawMessage (text, timestamp, message_id, views) and RawAccount
+    (account_id, platform, handle, account_type, bio, payment_handles,
+    external_links, messages, source). Every ingestor below produces
+    RawAccount objects — this is the "common currency" the rest of the
+    system speaks.
+  telegram_ingestor.py
+    REAL, live ingestion via Telethon (the official MTProto API client).
+    Needs TELEGRAM_API_ID + TELEGRAM_API_HASH (free from
+    https://my.telegram.org) and a one-time interactive login
+    (login_telegram.py) that creates telegram.session. After that, fetch()
+    can log in headlessly and pull up to `limit` recent messages from any
+    public channel/group/bot.
+  instagram_ingestor.py
+    UNOFFICIAL, best-effort, via the `instaloader` library. Explicitly
+    documented as ToS-violating and ban-prone. NOT wired into the live
+    dashboard button — the dashboard only supports Instagram via manual
+    JSON upload (an investigator copies a profile's bio + captions into a
+    template file). This was a deliberate safety choice: there is no
+    legitimate API for reading arbitrary third-party Instagram accounts.
+  whatsapp_ingestor.py
+    NOT scraping — WhatsApp groups are end-to-end encrypted with no API.
+    The only lawful workflow: an investigator's own account joins a public
+    group, then uses WhatsApp's built-in "Export chat" feature to produce a
+    .txt file, which this ingestor parses (regex over the standard
+    "12/07/24, 9:41 PM - Sender: message" export line format). There's also
+    a stub for a "live session bridge" (an external Node.js tool like
+    Baileys dumping to JSON) for advanced/future use, not required for the
+    prototype.
+  file_ingestor.py
+    Loads accounts from a local JSON file (the original sample_data.json
+    format, or anything another ingestor saved to disk). Used for the
+    sample scan and for JSON uploads.
+
+narcoscope/processing/ — text cleanup before scoring
+  normalize.py
+    Unicode/whitespace/casing cleanup. Uses NFKC normalization (folds
+    stylized Unicode like mathematical bold "𝐌𝐃𝐌𝐀" back to "MDMA"),
+    strips invisible zero-width characters (a trick to break up keywords
+    like "m<invisible>dma"), lowercases, and collapses whitespace.
+    Devanagari (Hindi script) passes through unchanged, which is exactly
+    what's needed for Hindi keyword matching.
+  deobfuscate.py
+    Undoes common evasion tricks on TOP of normalization:
+      - leetspeak ("m3ph3dr0n3" -> "mephedrone"-ish)
+      - letter-spacing ("m d m a" -> "mdma")
+      - repeated characters ("weeeed" -> "weed")
+    Also computes an obfuscation_score (0 to 1): how much a message changed
+    after de-obfuscation. A high score is itself a mild suspicion signal —
+    benign messages rarely need heavy de-obfuscation to read normally.
+  language.py
+    Lightweight language detection, specifically flagging "hi-Latn"
+    (Hindi written in Latin script, i.e. Hinglish) as a feature for the ML
+    model.
+
+narcoscope/model/ — the three-stage hybrid classifier
+  rules.py
+    Pass 1. Fast, transparent, explainable. Matches normalized AND
+    de-obfuscated text against SUBSTANCE_TERMS, BEHAVIORAL_PHRASES,
+    EMOJI_SIGNALS; checks for bot commands (/menu, /order, ...) and price
+    patterns (₹500/g style); flags "backup channel" phrases (sellers
+    posting a new channel link in case the current one gets banned).
+    Produces a MessageSignals object with the full breakdown of what
+    matched and why — this is what evidence tags in the dashboard come
+    from.
+  ml.py
+    Pass 2. A scikit-learn Pipeline combining three views of each message:
+      1. word-level TF-IDF (1-2 grams) on de-obfuscated text -> vocabulary
+      2. character-level TF-IDF (3-5 grams) -> survives obfuscation and
+         catches Hinglish patterns even without exact word matches
+      3. engineered numeric features (rule score, digit ratio, uppercase
+         ratio, obfuscation score, is_hinglish flag, etc — see
+         features/engineer.py)
+    Fed into an L2-regularized logistic regression (class-balanced, so
+    it doesn't just learn to predict the majority class). Chosen
+    deliberately over a black-box deep model because: fast to train on
+    CPU, coefficients stay inspectable, and calibrated-ish probabilities
+    matter for a tool whose output may support a legal request.
+  llm.py
+    Pass 3 (optional, off by default — enable with NARCOSCOPE_LLM=1 and an
+    ANTHROPIC_API_KEY). Only messages the ML stage is genuinely unsure
+    about get escalated here, so API cost stays bounded. Uses Claude Haiku
+    4.5 via the official `anthropic` SDK with a system prompt instructing
+    it to judge Hindi/Hinglish slang, coded emoji, and obfuscation, while
+    explicitly excluding benign mentions (news, recovery, harm-reduction,
+    jokes). If the SDK isn't installed or no key is set, this stage safely
+    disables itself and the pipeline just uses the ML score — nothing
+    crashes.
+  hybrid.py
+    The orchestrator (HybridClassifier.classify_message()). Runs rules
+    first, always. If a trained ML model exists, uses its probability as
+    the primary signal — UNLESS the rules score higher, in which case the
+    rule probability wins (this is the fix that makes Hindi/Hinglish
+    detection reliable even though the ML model was trained mostly on
+    English — see section 3, Step 2c). Then, if the LLM stage is enabled
+    and the current probability lands in the "ambiguous" band, escalates
+    to the LLM for a final call. Returns a MessageVerdict recording which
+    stage actually decided the outcome (decided_by: "rules"/"ml"/"llm") —
+    this traceability matters both for debugging and for explaining a flag
+    to an investigator or a court.
+
+narcoscope/features/engineer.py
+  Turns raw text + rule signals into numeric feature vectors:
+    - message_features(): char length, token count, number of matched
+      substances/phrases/emoji, has_bot_command, has_price_pattern,
+      has_backup_phrase, number of links, digit ratio, uppercase ratio,
+      obfuscation score, is_hinglish flag. This exact vector layout
+      (MESSAGE_NUMERIC_FEATURES) feeds the ML model — order matters
+      because the trained model expects features in this order.
+    - account_features(): aggregates across an account's messages (max/
+      mean/std message score, flagged ratio, bot-command ratio, link
+      counts, unique substance count) PLUS a network feature
+      (shared_payment_degree: how many other accounts share a payment
+      handle with this one) and a "burstiness" signal (median gap between
+      posts under 60 seconds suggests automation).
+
+narcoscope/pipeline.py
+  Ties everything together. analyze(accounts, classifier) is the single
+  function that: runs the hybrid classifier over every message of every
+  account, computes account-level risk scores and bands, builds the
+  cross-account payment-handle clusters, and returns one big dict matching
+  (and extending) the original flagged_output.json schema. Also has a
+  main() so it's runnable standalone: `python -m narcoscope.pipeline` reads
+  sample_data.json and writes flagged_output.json with zero servers
+  running — useful for testing the engine in isolation.
+
+narcoscope/labeling/ — building a trustworthy training/test dataset
+  dataset.py (LabelStore)
+    THE MOST IMPORTANT FILE FOR ACCURACY HONESTY. Implements a leak-proof
+    train/test split: every labeled message is assigned to "train" or
+    "test" DETERMINISTICALLY by hashing its normalized text (not randomly),
+    so a given message always lands in the same split forever, no matter
+    when it was labeled or how many times the dataset grows. This
+    structurally prevents the single most common way ML accuracy numbers
+    lie: the same (or a near-duplicate) message appearing in both training
+    and test data, which would let the model "memorize" its way to a fake
+    high score. Labels live in data/labels.jsonl (append-only, one JSON
+    object per line, with provenance: who labeled it, when, from what
+    source).
+  weak_rules.py
+    "Weak supervision" — uses the transparent rule engine to auto-label
+    large amounts of unlabeled text (with an ABSTAIN option for anything
+    ambiguous), bootstrapping training volume before enough real hand
+    labels exist.
+  synth.py
+    Generates synthetic (template-based) positive/negative examples to
+    further bootstrap training volume when real labels are scarce.
+  server.py
+    A small standalone labeling web UI (python -m narcoscope.labeling.
+    server, port 8100) — lets a human quickly page through candidate
+    messages and mark each one 0 (benign) or 1 (drug-sale), building up
+    data/labels.jsonl by hand. This is the tool to use to grow the real,
+    trustworthy test set beyond the demo labels already included.
+
+narcoscope/label_tool.py
+  A command-line alternative to the web labeling server, for labeling from
+  a terminal.
+
+narcoscope/train.py
+  Trains the ML classifier with the SAME leak-proof discipline: combines
+  hand labels (train split ONLY), weak labels, and synthetic data, then
+  explicitly DROPS any training example whose text collides with a
+  held-out test message before fitting. Prints a cross-validation report
+  over training data as an internal sanity check, but is explicit that
+  this number is NOT the real accuracy claim — that comes from evaluate.py
+  run against data never seen during training.
+  Run: `python -m narcoscope.train` (options: --synthetic N, --weak-source
+  path, --no-cv).
+
+narcoscope/evaluate.py
+  THE NUMBER THAT ACTUALLY MATTERS. Grades the classifier (by default the
+  full hybrid, or --ml-only for just the ML stage) against the held-out
+  test split of real hand labels — messages the model never trained on.
+  Computes precision/recall/F1/accuracy plus a confusion matrix, and
+  REFUSES to over-claim: if the test set is smaller than 50 messages, or
+  has fewer than 15 examples of either class, it prints an explicit
+  reliability warning instead of presenting the number as trustworthy.
+  This module is what powers the "Model accuracy" panel in the dashboard
+  (via backend/scanner/services.py's model_metrics() calling the same
+  logic).
+  Run: `python -m narcoscope.evaluate`
+
+narcoscope/scrape.py
+  A CLI entry point for running an ingestor + the pipeline together
+  outside the web app (useful for quick terminal testing without starting
+  Django/React at all).
+  Run: `python -m narcoscope.scrape telegram @channel -o data/out.json`
+
+================================================================================
+5. THE BACKEND (Django REST API) — FILE BY FILE
+================================================================================
+
+Location: backend/  (a standard Django project named "config" containing
+one app, "scanner")
+
+backend/config/settings.py
+  Standard Django settings, plus:
+    - adds the repo root to sys.path so `import narcoscope` works from
+      inside Django without turning it into a separately-installed package
+    - installs rest_framework, corsheaders, and the local "scanner" app
+    - CORS is allowed for http://localhost:5173 (the Vite dev server) —
+      in dev, though, the frontend actually proxies /api requests through
+      Vite itself (see vite.config.js), so requests appear same-origin and
+      CORS mostly isn't even exercised in local development
+    - SQLite database (db.sqlite3) — fine for a prototype/single-analyst
+      tool; would become Postgres for a real multi-user deployment
+
+backend/config/urls.py
+  Routes /admin/ to Django's built-in admin site (handy for poking at raw
+  data) and /api/ to scanner.urls.
+
+backend/scanner/models.py — the database schema
+  ScanRun
+    One execution of the pipeline. source (sample/upload/telegram),
+    source_label (filename or channel names), accounts_analyzed,
+    flagged_accounts, model_stages (which stages were active). Every scan
+    creates a NEW row — this is what gives you scan history instead of
+    overwriting one file.
+  AccountRecord
+    One account's full result from one scan run: platform, handle,
+    account_type, risk_score, risk_band, is_probable_bot,
+    flagged_message_count, total_messages_seen, features (JSON),
+    evidence_sample (JSON — the top-3 flagged messages with full detail),
+    message_verdicts (JSON — every single message's verdict).
+  LinkedCluster
+    One shared-payment-handle group for one scan run: payment_handle,
+    account_ids (JSON list).
+  TelegramWatch
+    A saved watchlist entry (username, label, active, last_scanned_at) so
+    an investigator can build a list of channels to periodically re-scan.
+  IngestJob
+    Tracks a background scrape: status (pending/running/done/error),
+    source, targets, error text, and a link to the resulting ScanRun once
+    done. This exists because a live Telegram scrape can take tens of
+    seconds — too slow to make an HTTP request wait synchronously — so it
+    runs on a background Python thread and the frontend polls this job's
+    status instead.
+
+backend/scanner/services.py — THE BRIDGE (the only file that imports narcoscope)
+  This is deliberate: every Django view goes through these functions, and
+  these functions are the ONLY code that imports the narcoscope package.
+  That keeps narcoscope a clean, framework-free library and keeps all the
+  "how do we save this to a database" logic in one place.
+    run_pipeline_on_accounts() — runs the HybridClassifier over a list of
+      RawAccount objects and writes the result into the database (creates
+      one ScanRun + many AccountRecord + many LinkedCluster rows, inside
+      one atomic transaction so a scan is never half-saved).
+    run_sample_scan() — loads the bundled sample_data.json and runs it.
+    run_upload_scan() — accepts an uploaded file. If it ends in .txt,
+      treats it as a WhatsApp chat export and routes to
+      _run_whatsapp_export(); otherwise parses it as JSON accounts
+      (the Instagram/generic upload format).
+    _run_whatsapp_export() — writes the uploaded .txt to a temp file (the
+      existing WhatsAppIngestor works off file paths), parses it, renames
+      the resulting account's handle to the original filename (so
+      "Weekend Vibes Group.txt" becomes handle "Weekend Vibes Group"
+      instead of a random temp filename), then runs the pipeline.
+    run_telegram_scan() — blocking: fetches from Telegram live and runs
+      the pipeline. Only ever called from a background thread (see below),
+      never directly from a request handler, because it can take a while.
+    run_telegram_job() — the actual function that runs ON the background
+      thread. Marks the IngestJob as "running", calls run_telegram_scan(),
+      and marks it "done" (attaching the resulting ScanRun) or "error"
+      (attaching a trimmed traceback) when finished.
+    telegram_health() — reports whether TELEGRAM_API_ID/HASH are set AND
+      whether telegram.session exists, so the frontend can show a clear
+      "not connected" / "credentials set but not logged in" / "connected"
+      status instead of guessing from a failed request.
+    build_dossier() — see section 12 (Evidence Dossier) below.
+    model_metrics() — calls narcoscope.evaluate's logic against the
+      current held-out test labels and returns precision/recall/F1/
+      reliability warnings as JSON for the dashboard's accuracy panel.
+
+backend/scanner/serializers.py — Django REST Framework serializers
+  Converts model instances to/from JSON. Notably there are TWO account
+  serializers: AccountRecordSummarySerializer (lightweight, used in scan
+  list views — no per-message verdicts, keeps the payload small) and the
+  full AccountRecordSerializer (used when you fetch one specific account,
+  includes every message's verdict for the evidence drawer).
+
+backend/scanner/views.py — the actual HTTP endpoints
+  ScanRunViewSet — GET /api/scans/ (list), GET /api/scans/<id>/ (detail),
+    plus two custom actions:
+      GET  /api/scans/latest/      -> the most recent scan, full detail
+      POST /api/scans/run_sample/  -> runs the sample scan right now
+      POST /api/scans/upload/      -> accepts a multipart file upload
+  AccountRecordViewSet — GET /api/accounts/<id>/ (full detail with every
+    message verdict), plus:
+      GET /api/accounts/<id>/dossier/ -> builds and returns the evidence
+        dossier JSON (see section 12)
+  TelegramWatchViewSet — full CRUD for the watchlist:
+      GET/POST /api/watchlist/, DELETE /api/watchlist/<id>/
+  TelegramScanView — POST /api/telegram/scan/ {"targets": [...]}. Checks
+    telegram_health() first (returns 409 Conflict with a clear message if
+    not connected yet), otherwise creates an IngestJob and starts the
+    background thread, returning the job's id immediately (HTTP 202
+    Accepted — "I've started this, check back for the result").
+  IngestJobView — GET /api/jobs/<id>/, for the frontend to poll.
+  TelegramHealthView — GET /api/telegram/health/.
+  ModelMetricsView — GET /api/model/metrics/.
+
+backend/scanner/urls.py
+  Wires all of the above into actual URL paths under /api/.
+
+Why a background THREAD instead of Celery/Redis?
+  A proper production task queue (Celery + Redis/RabbitMQ) is the "correct"
+  answer at scale, but it's real infrastructure to install and run. At the
+  scale of "one investigator occasionally triggers a scrape of a few
+  channels," a plain Python daemon thread that updates a database row is
+  simpler, has zero extra moving parts, and is completely adequate. This
+  was a deliberate scope decision, not an oversight — noted directly in
+  the services.py docstring.
+
+================================================================================
+6. THE FRONTEND (React dashboard) — FILE BY FILE
+================================================================================
+
+Location: frontend/  (a Vite + React project, NOT the old static
+index.html/dashboard.html files at the repo root, which are now superseded
+legacy prototypes kept only for reference)
+
+frontend/vite.config.js
+  Configures the dev server to proxy any request to /api/* straight to the
+  Django backend on port 8001. This means the browser sees everything as
+  one origin (http://localhost:5173) even though two separate servers are
+  actually running — no CORS headaches during development.
+
+frontend/src/main.jsx, App.jsx
+  Entry point. App.jsx sets up two routes with react-router-dom:
+    "/"          -> Landing.jsx (marketing/explainer page)
+    "/dashboard" -> Dashboard.jsx (the actual investigator tool)
+
+frontend/src/api/client.js
+  A single small wrapper around fetch() with every backend endpoint as a
+  named function (api.latestScan(), api.runSampleScan(), api.uploadScan(),
+  api.startTelegramScan(), api.getJob(), api.listWatchlist(),
+  api.addWatch(), api.removeWatch(), api.modelMetrics(), api.getDossier(),
+  ...). Every component that needs data goes through this file instead of
+  calling fetch() directly — one place to change the API contract if it
+  ever moves.
+
+frontend/src/pages/Landing.jsx + Landing.css
+  The public-facing explainer page: hero section with live stats pulled
+  from the latest scan (accounts analyzed, flagged count, linked clusters,
+  platforms covered), a 4-step pipeline explainer (Ingest -> Score -> Link
+  -> Escalate), a features grid, and an explicit "Scope & limits" section
+  stating plainly what the system does NOT do (no IP/phone/email
+  extraction, human review required before any escalation).
+
+frontend/src/pages/Dashboard.jsx + Dashboard.css
+  The main tool. Holds ALL of the interactive state (which scan is loaded,
+  which account is selected, current filters, Telegram job status,
+  watchlist, upload state, mobile menu open/closed) and renders:
+    - a sidebar with risk-band filter chips (All/Critical/High/Medium/Low
+      with live counts), a platform filter, a "Data source" section (run
+      sample scan / upload a file / download the upload template), the
+      live Telegram ingestion panel, and the model-accuracy panel
+    - a main area with a topbar (scan metadata), 4 stat cards (critical/
+      high/scanned/clusters), an alert banner (highlights the single
+      riskiest account), the sortable account table, and the operator
+      network graph
+    - a slide-in evidence drawer (full-screen on mobile) when an account
+      is selected, showing risk details, top evidence with matched terms/
+      phrases highlighted, linked accounts, and the "Generate dossier"
+      button
+    - a mobile hamburger menu that turns the sidebar into an off-canvas
+      panel on narrow screens (see section 14)
+  Polling: when a Telegram scan job starts, a setInterval polls
+  GET /api/jobs/<id>/ every 2 seconds until the job is "done" or "error",
+  then reloads the scan data automatically — no manual refresh needed.
+
+frontend/src/components/
+  AccountTable.jsx — renders the sortable table of accounts (platform
+    badge, handle + type + "automated" tag, a colored risk bar + score,
+    the risk band pill, flagged/total message count). On narrow screens
+    this same markup restyles into stacked cards via CSS (see section 14).
+  AccountDrawer.jsx — the evidence panel: key-value grid (risk score, bot
+    status, flagged count, source), the evidence list (each item shows
+    confidence %, which stage decided it, the message text, and colored
+    tags for matched substance terms vs. behavioral phrases), any linked
+    accounts sharing a payment handle, and the dossier button.
+  NetworkGraph.jsx — draws one small SVG per shared-payment-handle
+    cluster: a "UPI" hub node in the center with lines out to every
+    account that uses that handle, each account node colored by its risk
+    band and labeled with a 2-letter platform code + its handle. Clicking
+    a node opens that account in the drawer. This is the "one operator,
+    many storefronts" visualization.
+  TelegramPanel.jsx — connection status indicator, the channel-input
+    textarea + "Scan channels" button (disabled until Telegram is
+    connected), live job status text, and the watchlist add/remove UI.
+  ModelMetricsPanel.jsx — renders the real precision/recall/F1/N numbers
+    from the backend, with a green "Reliable test set" or amber
+    "Indicative only" flag depending on whether the test set clears the
+    minimum-size/balance thresholds evaluate.py enforces.
+  RiskBadge.jsx — a tiny reusable colored pill for LOW/MEDIUM/HIGH/
+    CRITICAL, used in both the table and the drawer.
+
+frontend/src/utils/dossier.js
+  printDossier(dossierJson) — builds a full, self-contained HTML document
+  (inline CSS, no external dependencies) from the dossier JSON the backend
+  returns, opens it in a new browser window/tab, and triggers the
+  browser's native print dialog (which lets the user "Save as PDF"). Using
+  the browser's own print/PDF pipeline — rather than a server-side PDF
+  library — was a deliberate choice because it renders Hindi/Devanagari
+  text correctly without needing to bundle a Devanagari-capable font on
+  the server.
+
+frontend/src/styles/theme.css
+  Shared CSS custom properties (colors, spacing tokens, font stacks) used
+  across both pages, plus the reusable .risk-badge styles.
+
+================================================================================
+7. HOW THE THREE LAYERS TALK TO EACH OTHER
+================================================================================
+
+  React (browser)  --fetch()-->  Vite dev server (:5173)
+                                       │ proxies /api/* to
+                                       ▼
+                                  Django (:8001)  --Python import-->  narcoscope package
+                                       │
+                                       ▼
+                                  SQLite (backend/db.sqlite3)
+
+The frontend NEVER imports or calls narcoscope directly — it only ever
+talks JSON over HTTP to Django. Django is the only thing that imports
+narcoscope. This one-way dependency chain (React -> Django -> narcoscope)
+means each layer can be tested, replaced, or reused independently — e.g.
+the whole narcoscope engine already works standalone from a terminal with
+zero web servers running at all.
+
+================================================================================
+8. INGESTION: HOW DATA GETS IN, PER PLATFORM
+================================================================================
+
+TELEGRAM — fully live and automated
+  1. One-time setup: get free API credentials from https://my.telegram.org,
+     put them in a local .env file (TELEGRAM_API_ID, TELEGRAM_API_HASH).
+  2. One-time login: run `python login_telegram.py` once from a terminal.
+     This is INTERACTIVE (Telegram texts/app-notifies you a login code, and
+     asks for your 2FA password if you have one) — it cannot be automated
+     inside the web app itself. It saves telegram.session, an authenticated
+     session file, at the repo root.
+  3. From then on: the dashboard's Telegram panel can trigger real scrapes
+     with zero further prompts, because the backend just re-uses that
+     saved session file.
+  This is the ONLY platform with this level of automation, because it's
+  the only one with a legitimate first-party API for reading public
+  channel content.
+
+INSTAGRAM — manual upload only, by design
+  There is no official API that returns arbitrary third-party accounts'
+  content (Meta's Graph API only covers accounts you own/manage). The only
+  way to read someone else's public Instagram content programmatically is
+  unofficial scraping (e.g. `instaloader`), which violates Instagram's
+  Terms of Service and gets accounts/IPs banned quickly. The codebase has
+  an instaloader-based ingestor (narcoscope/ingestion/instagram_ingestor.py)
+  but it is intentionally NOT wired to a live button in the dashboard.
+  Instead: an investigator manually copies a profile's bio and post
+  captions into a JSON file (a downloadable template is one click away in
+  the dashboard's "Data source" section) and uploads it. This keeps the
+  tool fully within Instagram's terms and avoids any ban risk, at the cost
+  of being a manual, per-account process.
+
+WHATSAPP — export-then-upload, by necessity
+  WhatsApp groups/chats are end-to-end encrypted. There is no API — not
+  even an unofficial one — that can read messages your own account did not
+  receive, and there is no way to discover or enumerate groups you haven't
+  joined. The only lawful workflow: an investigator's own WhatsApp account
+  joins a public group, then uses WhatsApp's built-in Export Chat feature
+  (Group -> More -> Export chat -> Without media) to produce a .txt file.
+  The dashboard's upload button auto-detects a .txt file and routes it
+  through WhatsAppIngestor, which parses WhatsApp's standard export line
+  format with a regex, extracting sender-less message text (the group as a
+  whole is treated as one "account" for scoring purposes) and using the
+  original filename as the group's display name.
+
+================================================================================
+9. SCORING: HOW A MESSAGE BECOMES A RISK NUMBER
+================================================================================
+
+Every message goes through score_message() (the rules) and, if a model is
+trained, MLClassifier.predict_proba() (the ML), combined by
+HybridClassifier.classify_message() (see section 4's model/hybrid.py entry
+for the exact reconciliation logic). The end result for one message is a
+single number between 0 and 1 (final_prob) plus is_flagged = final_prob >=
+0.5, and a record of decided_by so you always know WHY a message was
+flagged (a specific keyword rule fired vs. the trained model's judgment vs.
+an LLM's judgment).
+
+Concretely, what makes the RULES fire:
+  - a known substance term is present (English or Hindi/Hinglish)
+  - a known sale-behavior phrase is present ("dm to order", "माल है", etc)
+  - a suspicious emoji is present (🔌, 💊, ❄️, etc)
+  - a bot command (/menu, /order, /price, /catalog, /stock) is present
+  - a price pattern (₹500/g style) is present, but ONLY combined with an
+    actual substance mention (a price alone means nothing)
+  - a "backup channel" phrase is present ("backup channel", "if this gets
+    banned", etc — sellers pre-announcing where to find them if banned)
+Each hit adds a configured weight to a running score; the total score is
+then squashed into a 0-1 probability by dividing by 7.0 and capping at 1.0.
+
+================================================================================
+10. ACCOUNT-LEVEL RISK AND CROSS-ACCOUNT LINKING
+================================================================================
+
+An account's risk_score blends THREE things on purpose, not just an
+average:
+  - the WORST single message (catches a one-off but serious post — e.g. an
+    otherwise-quiet account that posted one blatant price list)
+  - the AVERAGE message probability (catches accounts that are
+    persistently suspicious even if no single message is damning on its
+    own)
+  - the FRACTION of messages that got flagged at all (catches accounts
+    where drug content is a small fraction of otherwise-normal chatter,
+    vs. accounts that are drug content top to bottom)
+Bot-like accounts (either explicitly typed "bot", or where >30% of
+messages are automated bot commands) get a flat +1.0 bonus, on the
+reasoning that an automated storefront can scale much faster than a manual
+seller and deserves a small priority bump.
+
+Cross-account linking is deliberately simple and defensible: it only
+groups accounts that share an identical payment_handle string (typically a
+UPI ID). This is presented as a strong signal, not a guess — it's public,
+non-private, already-shared-by-the-seller-themselves data. It is NOT based
+on writing-style similarity, IP addresses, or anything that would require
+private platform data.
+
+================================================================================
+11. THE LABELING + TRAINING + EVALUATION LOOP
+================================================================================
+
+This is how the system avoids the single biggest way ML tools lie about
+their own accuracy: training and testing on overlapping data.
+
+  1. Someone labels real messages as 0 (benign) or 1 (drug-sale), either
+     through the web labeling tool (narcoscope/labeling/server.py, port
+     8100), the CLI tool (narcoscope/label_tool.py), or a bulk script like
+     build_demo_labels.py (see below). Each label is appended to
+     data/labels.jsonl with its text, label, and who/when/source metadata.
+  2. LabelStore.split_of(text) deterministically decides "train" or "test"
+     for that exact text by hashing it — this decision NEVER changes for
+     that text, no matter when it's labeled or how the dataset grows
+     later. Roughly 20% of labels land in "test" (TEST_FRACTION in
+     config.py).
+  3. `python -m narcoscope.train` builds a training set from: hand labels
+     (TRAIN split only) + weak labels (rule-engine-labeled sample data) +
+     synthetic template-generated examples — but explicitly REMOVES any
+     of those if their text collides with a held-out TEST message, so
+     nothing the model is graded on ever leaks into what it was trained
+     on. It fits a fresh scikit-learn pipeline and saves it to
+     models/message_classifier.joblib.
+  4. `python -m narcoscope.evaluate` loads that saved model, runs it
+     against ONLY the held-out test split, and reports real
+     precision/recall/F1/accuracy plus a confusion matrix — and explicitly
+     flags the result as unreliable if the test set is too small (<50
+     total) or too imbalanced (<15 examples of either class).
+  5. The exact same evaluate.py logic is exposed to the dashboard via
+     backend/scanner/services.py's model_metrics(), which is what powers
+     the "Model accuracy" panel — so the number an investigator sees in
+     the UI is the same honestly-computed number, not a marketing figure.
+
+build_demo_labels.py (repo root)
+  A one-off script that populated data/labels.jsonl with ~230 curated
+  bilingual (English + Hindi/Hinglish/Devanagari) examples for this
+  hackathon demo, INCLUDING deliberate "hard negatives" (benign messages
+  that mention delivery/DM/COD but no actual substance, e.g. "fresh
+  vegetables home delivery, DM to order") so the measured precision isn't
+  artificially inflated by only testing on obviously-easy examples. After
+  running it once and retraining, the measured hybrid accuracy on the
+  held-out test split was: precision 0.971, recall 1.0, F1 0.985, on 52
+  test messages (33 positive, 19 negative) — clearing evaluate.py's
+  reliability bar, with the one false positive visible in the confusion
+  matrix rather than hidden.
+
+================================================================================
+12. THE EVIDENCE DOSSIER (COURT-READINESS)
+================================================================================
+
+Purpose: turn a flagged account into something an investigator can
+actually use as a starting point for a lawful evidence submission, not
+just a screenshot.
+
+backend/scanner/services.py's build_dossier(account):
+  - Computes a SHA-256 hash, SERVER-SIDE, over the exact UTF-8 bytes of
+    each piece of evidence text. This lets anyone later verify the
+    evidence text has not been altered since capture — the core idea
+    behind an electronic-evidence integrity certificate.
+  - Finds any OTHER accounts in the same scan that share a payment handle
+    with this one (the cross-platform link).
+  - Assembles a dossier_id (e.g. "NS-8-36-20260706150802" — scan id,
+    account id, timestamp) and a fixed legal/scope certificate paragraph
+    stating: this was built from public content only; no private data
+    (IP/phone/email/subscriber records) was extracted; obtaining
+    subscriber records requires lawful process (Section 91 BNSS/CrPC, or
+    an MLAT request for foreign platforms); and this document is
+    investigative material for analyst review, not a legal filing on its
+    own — it should be certified by the investigating officer under
+    Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (India's current
+    electronic-evidence law) before evidentiary use.
+  - Returned as JSON from GET /api/accounts/<id>/dossier/.
+
+frontend/src/utils/dossier.js's printDossier(dossier):
+  - Renders that JSON into a clean, self-contained HTML page (subject
+    account details, each evidence item with its confidence/hash/matched
+    terms, the linked-accounts table, the certificate paragraph) and opens
+    it in a new browser tab, then triggers window.print() so the user can
+    "Save as PDF". Rendering via the browser (rather than a server-side
+    PDF library) was chosen specifically so Hindi/Devanagari text renders
+    correctly without extra font bundling.
+
+================================================================================
+13. THE REACT DASHBOARD, SCREEN BY SCREEN
+================================================================================
+
+LANDING PAGE (/)
+  Hero with live stats (pulled from the latest real scan, not hardcoded),
+  a 4-step pipeline explainer, a features grid (Telegram bots & channels /
+  Instagram handles & stories / cross-platform correlation), and an
+  explicit legal scope section. Links to the dashboard.
+
+DASHBOARD (/dashboard)
+  Sidebar (or off-canvas menu on mobile):
+    - Brand / back-to-landing link
+    - Risk band filter chips with live counts (All/Critical/High/Medium/
+      Low)
+    - Platform filter (All/Telegram/Instagram/WhatsApp)
+    - Data source: "Run sample scan" button, "Upload accounts file"
+      button (accepts JSON or WhatsApp .txt exports) + a "Download
+      template" link that generates a ready-to-fill JSON example
+      client-side
+    - Live Telegram ingestion: connection status, channel input,
+      "Scan channels" button, live job status, watchlist management
+    - Model accuracy: real precision/recall/F1/N with a reliability flag
+  Main area:
+    - Topbar: scan source label, scan number, timestamp, "N analyzed"
+    - Four stat cards: critical count, high count, total scanned, linked
+      clusters
+    - Alert banner: highlights the single riskiest account (or "No
+      critical alerts" if the batch is clean)
+    - The account table: platform, handle (+type +automated tag), a
+      colored score bar, the risk band pill, flagged/total messages.
+      Clicking a row opens the evidence drawer.
+    - Operator network graph: one small diagram per shared-payment-handle
+      cluster, hub-and-spoke, color-coded by risk, clickable nodes.
+  Evidence drawer (slides in from the right on desktop, full-screen sheet
+  on mobile):
+    - Key-value grid: risk score, automated status, flagged/total
+      messages, ingestion source
+    - Evidence list: each flagged message with its confidence %, which
+      stage decided it, the full text, and colored tags for matched
+      substance terms (red) vs. behavior phrases (amber)
+    - Linked accounts section, if this account shares a payment handle
+      with another one in the same scan
+    - "Generate legal-request dossier" button
+    - A legal-note reminder that this is not itself a legal filing
+
+================================================================================
+14. MOBILE RESPONSIVENESS
+================================================================================
+
+Below 1024px width: the sidebar becomes an off-canvas panel (hidden by
+default, slides in from the left over a dimmed backdrop when the hamburger
+button is tapped, and auto-closes when a filter is picked), a mobile top
+bar with the hamburger + brand appears, and the evidence drawer becomes a
+full-screen sheet with its own close button instead of a cramped side
+panel.
+
+Below 560px width: the account table restructures from a 5-column table
+into stacked cards per account (handle prominent at the top, then band +
+platform + flagged count, then a full-width score bar underneath) so
+nothing overflows a phone screen, and stat cards/typography tighten up.
+
+All of this is pure CSS (media queries) plus one small piece of React
+state (menuOpen) — no functional logic changed, only layout.
+
+================================================================================
+15. CONFIGURATION, SECRETS, AND ENVIRONMENT FILES
+================================================================================
+
+.env (repo root, NEVER committed — listed in .gitignore)
+  TELEGRAM_API_ID, TELEGRAM_API_HASH — your personal Telegram API app
+  credentials from https://my.telegram.org. Loaded automatically by
+  narcoscope/config.py via python-dotenv, so every entry point (Django,
+  login_telegram.py, CLI scripts) sees them without re-exporting in every
+  terminal window.
+.env.example (committed)
+  A template showing exactly which variables .env needs, with empty
+  values — copy it to .env and fill in your own.
+telegram.session (repo root, NEVER committed)
+  Created once by running `python login_telegram.py` interactively. This
+  is your authenticated Telegram login — treat it like a password; anyone
+  with this file can act as your Telegram account.
+backend/db.sqlite3 (never committed)
+  The actual database file holding all scan history. Deleting it wipes
+  all past scans (but not the ML model or labels, which live elsewhere).
+models/message_classifier.joblib (gitignored, regeneratable)
+  The trained ML pipeline. Regenerate any time with
+  `python -m narcoscope.train`.
+data/labels.jsonl (committed intentionally — see .gitignore comment)
+  The hand-labeled dataset used for training/testing. Small and useful
+  enough to keep in version control for this prototype.
+.claude/launch.json
+  Defines the dev-server shortcuts used to start everything (see next
+  section) — not part of the application itself, just tooling.
+
+================================================================================
+16. HOW TO RUN EVERYTHING FROM SCRATCH
+================================================================================
+
+One-time setup:
+  1. pip install -r requirements.txt
+  2. cd frontend && npm install
+  3. Get free Telegram API credentials at https://my.telegram.org, put
+     them in a new .env file at the repo root (copy .env.example).
+  4. Run `python login_telegram.py` once, from a terminal, and follow the
+     interactive prompts (phone number, login code, 2FA password if set).
+     This creates telegram.session.
+  5. cd backend && python manage.py migrate    (creates db.sqlite3)
+
+Every time you want to run the app:
+  Terminal 1: cd backend && python manage.py runserver 8001
+  Terminal 2: cd frontend && npm run dev -- --port 5173
+  Open http://localhost:5173/ in a browser.
+
+Optional, to get a real trained model + measured accuracy instead of the
+rules-only fallback:
+  python build_demo_labels.py     (populates data/labels.jsonl once)
+  python -m narcoscope.train      (trains models/message_classifier.joblib)
+  python -m narcoscope.evaluate   (prints real precision/recall/F1)
+
+Optional, to test the engine with zero web servers running at all:
+  python -m narcoscope.pipeline               (uses sample_data.json)
+  python -m narcoscope.pipeline path/to.json   (uses your own file)
+
+Optional, to grow the label set by hand:
+  python -m narcoscope.labeling.server    (web UI, port 8100)
+  python -m narcoscope.label_tool         (CLI alternative)
+
+================================================================================
+17. KNOWN LIMITATIONS (stated on purpose, not hidden)
+================================================================================
+
+  - Instagram and WhatsApp are NOT live-scraped. This is a deliberate,
+    stated choice (see section 8), not a missing feature — there is no
+    legitimate live-scraping path for either platform that wouldn't
+    violate terms of service or be technically impossible (E2E
+    encryption).
+  - The keyword/slang dictionaries are intentionally limited to
+    substance/phrase terms that are already public knowledge. A real
+    deployment's evasion-resistant slang dictionary should live in a
+    restricted, access-controlled, analyst-maintained module — publishing
+    an exhaustive evasion-resistant list in open source code would itself
+    function as a how-to-evade-detection guide.
+  - The system does not, and by design cannot, extract IP addresses,
+    phone numbers, or email addresses from public content — platforms
+    don't expose that data publicly, and getting it requires lawful
+    process directed at the platform, not this tool.
+  - Nothing in the system auto-reports, auto-escalates, or takes any
+    action without a human analyst actively clicking through — this is a
+    triage/evidence-assembly tool, not an autonomous enforcement system.
+  - The measured accuracy (precision 0.971 / recall 1.0 / F1 0.985 on 52
+    held-out messages) is real and honestly computed, but the underlying
+    labeled set (~230 messages) is still small relative to a full
+    production deployment — it should keep growing via the labeling tool
+    as real-world messages get reviewed.
+  - The background-thread approach to Telegram scraping (rather than a
+    proper task queue like Celery) is adequate for one investigator's
+    occasional use, not for high-concurrency multi-analyst production
+    load.
+
+================================================================================
+18. GLOSSARY OF TERMS USED IN THE CODE
+================================================================================
+
+RawMessage / RawAccount   The common data shape every ingestor produces,
+                          before scoring.
+MessageSignals            The rule engine's structured output for one
+                          message: score + exactly which terms/phrases/
+                          emoji/patterns matched.
+MessageVerdict            The hybrid classifier's final output for one
+                          message: final probability, flagged or not,
+                          which stage decided it, plus the underlying
+                          MessageSignals for evidence.
+risk_score / risk_band    An ACCOUNT-level number (0-10) and its
+                          LOW/MEDIUM/HIGH/CRITICAL label.
+Hybrid classifier         The three-stage pipeline: rules -> ML -> optional
+                          LLM, reconciled so a strong rule hit is never
+                          silently overridden by a weaker ML score.
+Weak label                A label produced automatically by the rule
+                          engine (not a human), used to bootstrap training
+                          volume before enough real hand labels exist.
+Leak-proof split          The train/test assignment scheme where a
+                          message's split is a deterministic function of
+                          its own text, so it can never accidentally end
+                          up in both sets.
+Linked cluster            A group of 2+ accounts (often across different
+                          platforms) that share the same payment handle,
+                          treated as evidence of one underlying operator.
+Dossier                   The hash-stamped, printable evidence package for
+                          one flagged account, meant to support (not
+                          replace) a lawful investigation.
+ScanRun                   One historical execution of the pipeline, stored
+                          permanently in the database.
+IngestJob                 A tracked background task (currently only used
+                          for live Telegram scrapes) with a status an
+                          investigator's browser can poll.
+
+================================================================================
+END OF DOCUMENT
+================================================================================

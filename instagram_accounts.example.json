@@ -1,0 +1,27 @@
+[
+  {
+    "account_id": "ig_example_1",
+    "platform": "instagram",
+    "handle": "@some_handle",
+    "account_type": "profile",
+    "payment_handles": ["someone@upi"],
+    "external_links": ["https://t.me/theirbackupchannel"],
+    "bio": "Paste the profile bio text here",
+    "messages": [
+      { "text": "Paste a post caption here" },
+      { "text": "Paste another caption or story text here" }
+    ]
+  },
+  {
+    "account_id": "ig_example_2",
+    "platform": "instagram",
+    "handle": "@another_handle",
+    "account_type": "profile",
+    "payment_handles": [],
+    "external_links": [],
+    "bio": "Another profile's bio",
+    "messages": [
+      { "text": "One caption is enough to get a score" }
+    ]
+  }
+]

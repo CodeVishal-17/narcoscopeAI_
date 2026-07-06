@@ -1,0 +1,115 @@
+[
+  {
+    "account_id": "tg_001",
+    "platform": "telegram",
+    "handle": "@partysupplyindia",
+    "account_type": "channel",
+    "payment_handles": ["partysupply@upi"],
+    "messages": [
+      {"text": "New stock available 🚀 MDMA and LSD blotters, price list on DM"},
+      {"text": "DM to order, COD available in Mumbai and Pune, discreet packing guaranteed"},
+      {"text": "Mephedrone ❄️ back in stock, wholesale rate for bulk orders"},
+      {"text": "Happy Diwali to all our loyal customers!"},
+      {"text": "Backup channel link in case this one gets banned: t.me/partysupply2"}
+    ]
+  },
+  {
+    "account_id": "tg_002",
+    "platform": "telegram",
+    "handle": "@delhi_news_updates",
+    "account_type": "channel",
+    "payment_handles": [],
+    "messages": [
+      {"text": "Breaking: Delhi traffic police announce new rules for odd-even scheme"},
+      {"text": "Weather update: heavy rainfall expected this weekend"},
+      {"text": "Join our channel for daily news digest"}
+    ]
+  },
+  {
+    "account_id": "tg_bot_001",
+    "platform": "telegram",
+    "handle": "@candyshop_bot",
+    "account_type": "bot",
+    "payment_handles": ["candyshop@upi"],
+    "messages": [
+      {"text": "/start Welcome to Candy Shop! Type /menu to see our catalog 🍬"},
+      {"text": "/menu MDMA - ₹2500/g, LSD tabs - ₹800/pc, Molly - ₹2000/g"},
+      {"text": "/price Send your city for delivery estimate. Pan India delivery available"},
+      {"text": "/order Please share quantity and delivery address"}
+    ]
+  },
+  {
+    "account_id": "ig_001",
+    "platform": "instagram",
+    "handle": "@highvibes.plug",
+    "account_type": "profile",
+    "payment_handles": ["partysupply@upi"],
+    "messages": [
+      {"text": "New drop 🔌🍬 quality guaranteed, DM for price"},
+      {"text": "Stock available for the weekend, safe delivery pan india delivery"},
+      {"text": "Check our story for today's price list"}
+    ]
+  },
+  {
+    "account_id": "ig_002",
+    "platform": "instagram",
+    "handle": "@fitness_with_ravi",
+    "account_type": "profile",
+    "payment_handles": [],
+    "messages": [
+      {"text": "Morning workout routine, 30 min HIIT session"},
+      {"text": "Protein shake recipe for post-workout recovery"},
+      {"text": "New gym opening in Indore next month!"}
+    ]
+  },
+  {
+    "account_id": "wa_001",
+    "platform": "whatsapp",
+    "handle": "Weekend Vibes Group",
+    "account_type": "group",
+    "payment_handles": ["candyshop@upi"],
+    "messages": [
+      {"text": "Ganja and charas available, no minors please"},
+      {"text": "Acid tabs 800 rs per piece, quality guaranteed"},
+      {"text": "New channel link if this group gets removed: wa.me/xxxxx"}
+    ]
+  },
+  {
+    "account_id": "wa_002",
+    "platform": "whatsapp",
+    "handle": "Colony Residents Group",
+    "account_type": "group",
+    "payment_handles": [],
+    "messages": [
+      {"text": "Reminder: society meeting tomorrow at 6pm"},
+      {"text": "Water supply will be interrupted from 10am-2pm"},
+      {"text": "Please keep the parking area clear"}
+    ]
+  },
+  {
+    "account_id": "tg_003",
+    "platform": "telegram",
+    "handle": "@gwalior_night_plug",
+    "account_type": "channel",
+    "payment_handles": ["nightplug@upi"],
+    "messages": [
+      {"text": "चिट्टा और गांजा उपलब्ध है, होम डिलीवरी Gwalior और Bhopal में, रेट पूछो DM पर"},
+      {"text": "Bhai fresh maal aaya hai, garda aur afeem bhi hai, setting ho jayegi"},
+      {"text": "Cash on delivery available, discreet delivery, नशा best quality guaranteed"},
+      {"text": "आज शाम को पार्टी है सबको न्योता"},
+      {"text": "Backup channel link agar ye ban ho jaye: t.me/gwaliornight2"}
+    ]
+  },
+  {
+    "account_id": "ig_003",
+    "platform": "instagram",
+    "handle": "@mp.desi.vibes",
+    "account_type": "profile",
+    "payment_handles": ["nightplug@upi"],
+    "messages": [
+      {"text": "Naya stock aa gaya bhai, maal hai full quality, DM karo rate ke liye"},
+      {"text": "Home delivery available across MP, safe aur discreet packing"},
+      {"text": "Weekend special offer, jaldi karo stock limited hai"}
+    ]
+  }
+]

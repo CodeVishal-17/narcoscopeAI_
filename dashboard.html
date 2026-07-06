@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>NCB Cyber Watch — Investigator Dashboard (Prototype)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --base: #0b0e14;
+        --panel: #111621;
+        --panel-2: #161c29;
+        --border: #232b3a;
+        --border-strong: #2e3a4e;
+        --text-primary: #e6e9ef;
+        --text-secondary: #9aa4b5;
+        --text-muted: #5e6b80;
+        --accent: #3b82f6;
+        --accent-dim: #1e3a5f;
+        --critical: #e5484d;
+        --critical-bg: #3a1518;
+        --high: #f5a623;
+        --high-bg: #3a2b0c;
+        --medium: #f5d023;
+        --medium-bg: #332e0c;
+        --low: #4ade80;
+        --low-bg: #123321;
+        --mono: "IBM Plex Mono", monospace;
+        --sans: "IBM Plex Sans", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--base);
+        color: var(--text-primary);
+        font-family: var(--sans);
+        font-size: 14px;
+      }
+      .app {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        width: 230px;
+        flex-shrink: 0;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        padding: 20px 16px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 24px;
+      }
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent);
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .brand-text {
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+      .brand-text span {
+        display: block;
+        color: var(--text-muted);
+        font-weight: 400;
+        font-size: 11px;
+      }
+
+      .nav-section {
+        margin-bottom: 22px;
+      }
+      .nav-label {
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin: 0 0 8px 4px;
+      }
+      .filter-btn {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-family: var(--sans);
+        font-size: 13px;
+        padding: 7px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+      }
+      .filter-btn:hover {
+        background: var(--panel-2);
+      }
+      .filter-btn.active {
+        background: var(--accent-dim);
+        color: var(--accent);
+      }
+      .filter-count {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .filter-btn.active .filter-count {
+        color: var(--accent);
+      }
+
+      /* Main */
+      .main {
+        flex: 1;
+        padding: 20px 28px;
+        min-width: 0;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 18px;
+      }
+      .topbar h1 {
+        font-size: 17px;
+        font-weight: 600;
+        margin: 0 0 2px;
+      }
+      .topbar .sub {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .scan-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--low);
+        font-family: var(--mono);
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--low);
+        animation: pulse 1.6s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      /* Stat cards */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .stat {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 16px;
+      }
+      .stat .label {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .stat .value {
+        font-family: var(--mono);
+        font-size: 22px;
+        font-weight: 500;
+      }
+      .stat.critical .value {
+        color: var(--critical);
+      }
+      .stat.high .value {
+        color: var(--high);
+      }
+
+      /* Alert ticker */
+      .ticker {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 20px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .ticker .tag {
+        background: var(--critical-bg);
+        color: var(--critical);
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+
+      /* Table */
+      .table-wrap {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      thead th {
+        text-align: left;
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 500;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        background: var(--panel-2);
+      }
+      tbody tr {
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+      }
+      tbody tr:last-child {
+        border-bottom: none;
+      }
+      tbody tr:hover {
+        background: var(--panel-2);
+      }
+      tbody tr.selected {
+        background: var(--accent-dim);
+      }
+      td {
+        padding: 11px 14px;
+        vertical-align: middle;
+      }
+      .platform-badge {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        border: 1px solid var(--border-strong);
+        color: var(--text-secondary);
+        text-transform: capitalize;
+      }
+      .handle {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .handle .type {
+        color: var(--text-muted);
+        font-size: 11px;
+        margin-left: 6px;
+      }
+      .risk-pill {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 9px;
+        border-radius: 20px;
+        display: inline-block;
+      }
+      .risk-pill.CRITICAL {
+        background: var(--critical-bg);
+        color: var(--critical);
+      }
+      .risk-pill.HIGH {
+        background: var(--high-bg);
+        color: var(--high);
+      }
+      .risk-pill.MEDIUM {
+        background: var(--medium-bg);
+        color: var(--medium-9, #f5d023);
+      }
+      .risk-pill.LOW {
+        background: var(--low-bg);
+        color: var(--low);
+      }
+      .bar-track {
+        width: 70px;
+        height: 5px;
+        background: var(--border);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+      }
+      .score-num {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-left: 8px;
+      }
+      .row-score {
+        display: flex;
+        align-items: center;
+      }
+      .bot-tag {
+        font-size: 10px;
+        color: var(--accent);
+        font-family: var(--mono);
+        margin-left: 6px;
+      }
+
+      /* Drawer */
+      .drawer {
+        width: 380px;
+        flex-shrink: 0;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        padding: 20px;
+        overflow-y: auto;
+      }
+      .drawer.empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 13px;
+        text-align: center;
+        padding: 40px 20px;
+      }
+      .drawer h2 {
+        font-size: 15px;
+        font-family: var(--mono);
+        margin: 0 0 2px;
+      }
+      .drawer .sub {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .kv .item {
+        background: var(--panel-2);
+        border-radius: 6px;
+        padding: 8px 10px;
+      }
+      .kv .item .k {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 3px;
+      }
+      .kv .item .v {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .section-title {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 18px 0 8px;
+      }
+      .evidence {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+      }
+      .evidence .text {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+        line-height: 1.5;
+      }
+      .evidence .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .evidence .tag {
+        font-size: 10px;
+        background: var(--critical-bg);
+        color: var(--critical);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .evidence .tag.phrase {
+        background: var(--high-bg);
+        color: var(--high);
+      }
+      .evidence .score {
+        float: right;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .cluster-note {
+        background: var(--accent-dim);
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--accent);
+        margin-bottom: 8px;
+        line-height: 1.5;
+      }
+      .btn-primary {
+        width: 100%;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 10px;
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 6px;
+      }
+      .btn-primary:hover {
+        opacity: 0.9;
+      }
+      .legal-note {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 8px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">NC</div>
+          <div class="brand-text">
+            Cyber Watch<span>Anti-narcotics OSINT — prototype</span>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-label">Risk band</div>
+          <button class="filter-btn active" data-filter="band" data-value="ALL">
+            All accounts <span class="filter-count" id="cnt-ALL"></span>
+          </button>
+          <button class="filter-btn" data-filter="band" data-value="CRITICAL">
+            Critical <span class="filter-count" id="cnt-CRITICAL"></span>
+          </button>
+          <button class="filter-btn" data-filter="band" data-value="HIGH">
+            High <span class="filter-count" id="cnt-HIGH"></span>
+          </button>
+          <button class="filter-btn" data-filter="band" data-value="LOW">
+            Low / clear <span class="filter-count" id="cnt-LOW"></span>
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-label">Platform</div>
+          <button
+            class="filter-btn active"
+            data-filter="platform"
+            data-value="ALL"
+          >
+            All platforms
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="platform"
+            data-value="telegram"
+          >
+            Telegram
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="platform"
+            data-value="instagram"
+          >
+            Instagram
+          </button>
+          <button
+            class="filter-btn"
+            data-filter="platform"
+            data-value="whatsapp"
+          >
+            WhatsApp
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-label">Status</div>
+          <div
+            style="
+              font-size: 11px;
+              color: var(--text-muted);
+              line-height: 1.6;
+              padding: 0 4px;
+            "
+          >
+            Scoring: rule-based keyword +<br />behavior engine (v0.1)<br />
+            Sample size:
+            <span id="sample-size" style="color: var(--text-secondary)"></span>
+            accounts
+          </div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="topbar">
+          <div>
+            <h1>Flagged accounts — India</h1>
+            <div class="sub">
+              Telegram · WhatsApp (public groups) · Instagram — synthetic demo
+              data
+            </div>
+          </div>
+          <div class="scan-status">
+            <span class="dot"></span> Last scan just now
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat critical">
+            <div class="label">Critical risk</div>
+            <div class="value" id="stat-critical">0</div>
+          </div>
+          <div class="stat high">
+            <div class="label">High risk</div>
+            <div class="value" id="stat-high">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">Accounts scanned</div>
+            <div class="value" id="stat-total">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">Linked clusters</div>
+            <div class="value" id="stat-clusters">0</div>
+          </div>
+        </div>
+
+        <div class="ticker">
+          <span class="tag">ALERT</span>
+          <span id="ticker-text">Loading…</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Platform</th>
+                <th>Handle</th>
+                <th>Risk score</th>
+                <th>Band</th>
+                <th>Flagged msgs</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="drawer empty" id="drawer">
+        Select an account to view evidence and linked identifiers.
+      </div>
+    </div>
+
+    <script>
+      const DATA = {
+        generated_at: "2026-07-03T17:48:01.993581+00:00",
+        accounts_analyzed: 7,
+        flagged_accounts: 4,
+        reports: [
+          {
+            account_id: "tg_bot_001",
+            platform: "telegram",
+            handle: "@candyshop_bot",
+            account_type: "bot",
+            message_flags: [
+              {
+                text: "/start Welcome to Candy Shop! Type /menu to see our catalog \ud83c\udf6c",
+                score: 1.5,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: ["\ud83c\udf6c"],
+                has_bot_command: true,
+                has_price_pattern: false,
+              },
+              {
+                text: "/menu MDMA - \u20b92500/g, LSD tabs - \u20b9800/pc, Molly - \u20b92000/g",
+                score: 11.0,
+                matched_terms: ["mdma", "lsd", "molly"],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: true,
+                has_price_pattern: true,
+              },
+              {
+                text: "/price Send your city for delivery estimate. Pan India delivery available",
+                score: 3.0,
+                matched_terms: [],
+                matched_phrases: ["pan india delivery"],
+                matched_emoji: [],
+                has_bot_command: true,
+                has_price_pattern: false,
+              },
+              {
+                text: "/order Please share quantity and delivery address",
+                score: 1.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: true,
+                has_price_pattern: false,
+              },
+            ],
+            avg_message_score: 4.12,
+            max_message_score: 11.0,
+            flagged_message_count: 4,
+            total_messages_seen: 4,
+            is_probable_bot: true,
+            risk_score: 9.34,
+            risk_band: "CRITICAL",
+            evidence_sample: [
+              {
+                text: "/menu MDMA - \u20b92500/g, LSD tabs - \u20b9800/pc, Molly - \u20b92000/g",
+                score: 11.0,
+                matched_terms: ["mdma", "lsd", "molly"],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: true,
+                has_price_pattern: true,
+              },
+              {
+                text: "/price Send your city for delivery estimate. Pan India delivery available",
+                score: 3.0,
+                matched_terms: [],
+                matched_phrases: ["pan india delivery"],
+                matched_emoji: [],
+                has_bot_command: true,
+                has_price_pattern: false,
+              },
+              {
+                text: "/start Welcome to Candy Shop! Type /menu to see our catalog \ud83c\udf6c",
+                score: 1.5,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: ["\ud83c\udf6c"],
+                has_bot_command: true,
+                has_price_pattern: false,
+              },
+            ],
+          },
+          {
+            account_id: "tg_001",
+            platform: "telegram",
+            handle: "@partysupplyindia",
+            account_type: "channel",
+            message_flags: [
+              {
+                text: "New stock available \ud83d\ude80 MDMA and LSD blotters, price list on DM",
+                score: 11.5,
+                matched_terms: ["mdma", "lsd", "blotters"],
+                matched_phrases: ["stock available", "price list"],
+                matched_emoji: ["\ud83d\ude80"],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "DM to order, COD available in Mumbai and Pune, discreet packing guaranteed",
+                score: 6.0,
+                matched_terms: [],
+                matched_phrases: [
+                  "dm to order",
+                  "cod available",
+                  "discreet packing",
+                ],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Mephedrone \u2744\ufe0f back in stock, wholesale rate for bulk orders",
+                score: 5.5,
+                matched_terms: ["mephedrone"],
+                matched_phrases: ["wholesale rate"],
+                matched_emoji: ["\u2744\ufe0f"],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Happy Diwali to all our loyal customers!",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Backup channel link in case this one gets banned: t.me/partysupply2",
+                score: 1.5,
+                matched_terms: [],
+                matched_phrases: ["backup channel"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+            avg_message_score: 4.9,
+            max_message_score: 11.5,
+            flagged_message_count: 4,
+            total_messages_seen: 5,
+            is_probable_bot: false,
+            risk_score: 8.32,
+            risk_band: "CRITICAL",
+            evidence_sample: [
+              {
+                text: "New stock available \ud83d\ude80 MDMA and LSD blotters, price list on DM",
+                score: 11.5,
+                matched_terms: ["mdma", "lsd", "blotters"],
+                matched_phrases: ["stock available", "price list"],
+                matched_emoji: ["\ud83d\ude80"],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "DM to order, COD available in Mumbai and Pune, discreet packing guaranteed",
+                score: 6.0,
+                matched_terms: [],
+                matched_phrases: [
+                  "dm to order",
+                  "cod available",
+                  "discreet packing",
+                ],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Mephedrone \u2744\ufe0f back in stock, wholesale rate for bulk orders",
+                score: 5.5,
+                matched_terms: ["mephedrone"],
+                matched_phrases: ["wholesale rate"],
+                matched_emoji: ["\u2744\ufe0f"],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+          },
+          {
+            account_id: "wa_001",
+            platform: "whatsapp",
+            handle: "Weekend Vibes Group",
+            account_type: "group",
+            message_flags: [
+              {
+                text: "Ganja and charas available, no minors please",
+                score: 5.5,
+                matched_terms: ["charas", "ganja"],
+                matched_phrases: ["no minors"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Acid tabs 800 rs per piece, quality guaranteed",
+                score: 3.5,
+                matched_terms: ["acid tabs"],
+                matched_phrases: ["quality guaranteed"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "New channel link if this group gets removed: wa.me/xxxxx",
+                score: 1.0,
+                matched_terms: [],
+                matched_phrases: ["new channel link"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+            avg_message_score: 3.33,
+            max_message_score: 5.5,
+            flagged_message_count: 3,
+            total_messages_seen: 3,
+            is_probable_bot: false,
+            risk_score: 5.87,
+            risk_band: "HIGH",
+            evidence_sample: [
+              {
+                text: "Ganja and charas available, no minors please",
+                score: 5.5,
+                matched_terms: ["charas", "ganja"],
+                matched_phrases: ["no minors"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Acid tabs 800 rs per piece, quality guaranteed",
+                score: 3.5,
+                matched_terms: ["acid tabs"],
+                matched_phrases: ["quality guaranteed"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "New channel link if this group gets removed: wa.me/xxxxx",
+                score: 1.0,
+                matched_terms: [],
+                matched_phrases: ["new channel link"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+          },
+          {
+            account_id: "ig_001",
+            platform: "instagram",
+            handle: "@highvibes.plug",
+            account_type: "profile",
+            message_flags: [
+              {
+                text: "New drop \ud83d\udd0c\ud83c\udf6c quality guaranteed, DM for price",
+                score: 4.5,
+                matched_terms: [],
+                matched_phrases: ["dm for price", "quality guaranteed"],
+                matched_emoji: ["\ud83d\udd0c", "\ud83c\udf6c"],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Stock available for the weekend, safe delivery pan india delivery",
+                score: 4.5,
+                matched_terms: [],
+                matched_phrases: [
+                  "safe delivery",
+                  "stock available",
+                  "pan india delivery",
+                ],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Check our story for today's price list",
+                score: 1.5,
+                matched_terms: [],
+                matched_phrases: ["price list"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+            avg_message_score: 3.5,
+            max_message_score: 4.5,
+            flagged_message_count: 3,
+            total_messages_seen: 3,
+            is_probable_bot: false,
+            risk_score: 5.53,
+            risk_band: "HIGH",
+            evidence_sample: [
+              {
+                text: "New drop \ud83d\udd0c\ud83c\udf6c quality guaranteed, DM for price",
+                score: 4.5,
+                matched_terms: [],
+                matched_phrases: ["dm for price", "quality guaranteed"],
+                matched_emoji: ["\ud83d\udd0c", "\ud83c\udf6c"],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Stock available for the weekend, safe delivery pan india delivery",
+                score: 4.5,
+                matched_terms: [],
+                matched_phrases: [
+                  "safe delivery",
+                  "stock available",
+                  "pan india delivery",
+                ],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Check our story for today's price list",
+                score: 1.5,
+                matched_terms: [],
+                matched_phrases: ["price list"],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+          },
+          {
+            account_id: "tg_002",
+            platform: "telegram",
+            handle: "@delhi_news_updates",
+            account_type: "channel",
+            message_flags: [
+              {
+                text: "Breaking: Delhi traffic police announce new rules for odd-even scheme",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Weather update: heavy rainfall expected this weekend",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Join our channel for daily news digest",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+            avg_message_score: 0.0,
+            max_message_score: 0.0,
+            flagged_message_count: 0,
+            total_messages_seen: 3,
+            is_probable_bot: false,
+            risk_score: 0.0,
+            risk_band: "LOW",
+            evidence_sample: [],
+          },
+          {
+            account_id: "ig_002",
+            platform: "instagram",
+            handle: "@fitness_with_ravi",
+            account_type: "profile",
+            message_flags: [
+              {
+                text: "Morning workout routine, 30 min HIIT session",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Protein shake recipe for post-workout recovery",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "New gym opening in Indore next month!",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+            avg_message_score: 0.0,
+            max_message_score: 0.0,
+            flagged_message_count: 0,
+            total_messages_seen: 3,
+            is_probable_bot: false,
+            risk_score: 0.0,
+            risk_band: "LOW",
+            evidence_sample: [],
+          },
+          {
+            account_id: "wa_002",
+            platform: "whatsapp",
+            handle: "Colony Residents Group",
+            account_type: "group",
+            message_flags: [
+              {
+                text: "Reminder: society meeting tomorrow at 6pm",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Water supply will be interrupted from 10am-2pm",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+              {
+                text: "Please keep the parking area clear",
+                score: 0.0,
+                matched_terms: [],
+                matched_phrases: [],
+                matched_emoji: [],
+                has_bot_command: false,
+                has_price_pattern: false,
+              },
+            ],
+            avg_message_score: 0.0,
+            max_message_score: 0.0,
+            flagged_message_count: 0,
+            total_messages_seen: 3,
+            is_probable_bot: false,
+            risk_score: 0.0,
+            risk_band: "LOW",
+            evidence_sample: [],
+          },
+        ],
+        linked_account_clusters: {
+          "partysupply@upi": ["tg_001", "ig_001"],
+          "candyshop@upi": ["tg_bot_001", "wa_001"],
+        },
+      };
+
+      let filterBand = "ALL";
+      let filterPlatform = "ALL";
+      let selectedId = null;
+
+      function accountToCluster(id) {
+        for (const [handle, ids] of Object.entries(
+          DATA.linked_account_clusters,
+        )) {
+          if (ids.includes(id))
+            return { handle, ids: ids.filter((x) => x !== id) };
+        }
+        return null;
+      }
+
+      function riskColor(band) {
+        return {
+          CRITICAL: "var(--critical)",
+          HIGH: "var(--high)",
+          MEDIUM: "var(--medium)",
+          LOW: "var(--low)",
+        }[band];
+      }
+
+      function renderStats() {
+        const critical = DATA.reports.filter(
+          (r) => r.risk_band === "CRITICAL",
+        ).length;
+        const high = DATA.reports.filter((r) => r.risk_band === "HIGH").length;
+        document.getElementById("stat-critical").textContent = critical;
+        document.getElementById("stat-high").textContent = high;
+        document.getElementById("stat-total").textContent =
+          DATA.accounts_analyzed;
+        document.getElementById("stat-clusters").textContent = Object.keys(
+          DATA.linked_account_clusters,
+        ).length;
+        document.getElementById("sample-size").textContent =
+          DATA.accounts_analyzed;
+
+        document.getElementById("cnt-ALL").textContent = DATA.reports.length;
+        document.getElementById("cnt-CRITICAL").textContent = critical;
+        document.getElementById("cnt-HIGH").textContent = high;
+        document.getElementById("cnt-LOW").textContent = DATA.reports.filter(
+          (r) => r.risk_band === "LOW",
+        ).length;
+
+        const top = DATA.reports.find((r) => r.risk_band === "CRITICAL");
+        if (top) {
+          document.getElementById("ticker-text").textContent =
+            `New ${top.account_type} flagged on ${top.platform} — ${top.handle} — risk score ${top.risk_score.toFixed(1)} (${top.risk_band})`;
+        }
+      }
+
+      function filteredReports() {
+        return DATA.reports.filter((r) => {
+          if (filterBand !== "ALL" && r.risk_band !== filterBand) return false;
+          if (filterPlatform !== "ALL" && r.platform !== filterPlatform)
+            return false;
+          return true;
+        });
+      }
+
+      function renderTable() {
+        const tbody = document.getElementById("table-body");
+        tbody.innerHTML = "";
+        filteredReports().forEach((r) => {
+          const tr = document.createElement("tr");
+          if (r.account_id === selectedId) tr.classList.add("selected");
+          tr.onclick = () => {
+            selectedId = r.account_id;
+            renderTable();
+            renderDrawer();
+          };
+          tr.innerHTML = `
+      <td><span class="platform-badge">${r.platform}</span></td>
+      <td class="handle">${r.handle}<span class="type">${r.account_type}${r.is_probable_bot ? '<span class=\"bot-tag\">AUTOMATED</span>' : ""}</span></td>
+      <td>
+        <div class="row-score">
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, r.risk_score * 8)}%; background:${riskColor(r.risk_band)}"></div></div>
+          <span class="score-num">${r.risk_score.toFixed(1)}</span>
+        </div>
+      </td>
+      <td><span class="risk-pill ${r.risk_band}">${r.risk_band}</span></td>
+      <td style="font-family:var(--mono); color:var(--text-secondary)">${r.flagged_message_count}/${r.total_messages_seen}</td>
+    `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderDrawer() {
+        const drawer = document.getElementById("drawer");
+        const r = DATA.reports.find((x) => x.account_id === selectedId);
+        if (!r) {
+          drawer.className = "drawer empty";
+          drawer.textContent =
+            "Select an account to view evidence and linked identifiers.";
+          return;
+        }
+        drawer.className = "drawer";
+        const cluster = accountToCluster(r.account_id);
+
+        let evidenceHtml =
+          r.evidence_sample
+            .map((e) => {
+              const tags = [
+                ...e.matched_terms.map((t) => `<span class="tag">${t}</span>`),
+                ...e.matched_phrases.map(
+                  (p) => `<span class="tag phrase">${p}</span>`,
+                ),
+              ].join("");
+              return `<div class="evidence"><span class="score">score ${e.score.toFixed(1)}</span><div class="text">"${e.text}"</div><div class="tags">${tags}</div></div>`;
+            })
+            .join("") ||
+          '<div style="color:var(--text-muted); font-size:12px;">No flagged content — appears benign.</div>';
+
+        let clusterHtml = "";
+        if (cluster) {
+          clusterHtml = `<div class="section-title">Linked accounts</div>
+      <div class="cluster-note">Shares payment handle <strong>${cluster.handle}</strong> with ${cluster.ids.length} other flagged account(s): ${cluster.ids.join(", ")}. Suggests same operator across platforms.</div>`;
+        }
+
+        drawer.innerHTML = `
+    <h2>${r.handle}</h2>
+    <div class="sub">${r.platform} · ${r.account_type} · ${r.account_id}</div>
+    <div class="kv">
+      <div class="item"><div class="k">Risk score</div><div class="v" style="color:${riskColor(r.risk_band)}">${r.risk_score.toFixed(2)} — ${r.risk_band}</div></div>
+      <div class="item"><div class="k">Messages seen</div><div class="v">${r.total_messages_seen}</div></div>
+      <div class="item"><div class="k">Flagged</div><div class="v">${r.flagged_message_count}</div></div>
+      <div class="item"><div class="k">Automated</div><div class="v">${r.is_probable_bot ? "Likely bot" : "No"}</div></div>
+    </div>
+    ${clusterHtml}
+    <div class="section-title">Evidence (top matches)</div>
+    ${evidenceHtml}
+    <button class="btn-primary" onclick="alert('Prototype only — in production this compiles the evidence above into a dossier for submission under CrPC/BNSS Sec. 91 (or MLAT for foreign platforms) to request subscriber IP/phone/email logs from the platform.')">Generate legal-request dossier</button>
+    <div class="legal-note">IP, phone, and email are not inferable from public content. This step packages evidence for a lawful platform disclosure request — it does not bypass platform security.</div>
+  `;
+      }
+
+      document.querySelectorAll(".filter-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const group = btn.dataset.filter;
+          document
+            .querySelectorAll(`.filter-btn[data-filter="${group}"]`)
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          if (group === "band") filterBand = btn.dataset.value;
+          if (group === "platform") filterPlatform = btn.dataset.value;
+          renderTable();
+        });
+      });
+
+      renderStats();
+      renderTable();
+    </script>
+  </body>
+</html>
