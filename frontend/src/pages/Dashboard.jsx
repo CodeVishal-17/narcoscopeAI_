@@ -55,6 +55,7 @@ function downloadTemplate() {
 
 export default function Dashboard() {
   const [scan, setScan] = useState(null);
+  const [allScans, setAllScans] = useState([]);
   const [scanError, setScanError] = useState(null);
   const [bandFilter, setBandFilter] = useState("ALL");
   const [platformFilter, setPlatformFilter] = useState("ALL");
@@ -89,6 +90,7 @@ export default function Dashboard() {
     api.listWatchlist().then(setWatchlist).catch(() => {});
     api.modelMetrics().then(setMetrics).catch(() => setMetrics(null));
     api.listAlerts().then(setAlerts).catch(() => setAlerts([]));
+    api.listScans().then((res) => setAllScans(res.results || res)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -130,6 +132,7 @@ export default function Dashboard() {
       const run = await api.runSampleScan();
       setScan(run);
       setSelectedId(null);
+      refreshAux();
     } catch (e) {
       setScanError(e.message);
     } finally {
@@ -145,6 +148,7 @@ export default function Dashboard() {
       const run = await api.uploadScan(file);
       setScan(run);
       setSelectedId(null);
+      refreshAux();
     } catch (err) {
       setScanError(err.message);
     } finally {
@@ -373,8 +377,44 @@ export default function Dashboard() {
               <span>· scan #{scan.id} · {new Date(scan.created_at).toLocaleString()}</span>
             </div>
           </div>
-          <div className="db-scan-status">
-            <span className="db-dot" /> {scan.accounts_analyzed} analyzed
+          <div className="db-scan-status" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            {allScans && allScans.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>📜 History:</span>
+                <select
+                  value={scan?.id || ''}
+                  onChange={async (e) => {
+                    try {
+                      const s = await api.getScan(e.target.value);
+                      setScan(s);
+                      setSelectedId(null);
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#f8fafc',
+                    border: '1px solid #334155',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    fontWeight: '500'
+                  }}
+                >
+                  {allScans.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      Scan #{s.id} · {s.source} ({s.accounts_analyzed || 0} accts) · {new Date(s.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <span className="db-dot" /> {scan.accounts_analyzed} analyzed
+            </div>
           </div>
         </div>
 
