@@ -111,5 +111,55 @@
       {"text": "Home delivery available across MP, safe aur discreet packing"},
       {"text": "Weekend special offer, jaldi karo stock limited hai"}
     ]
+  },
+  {
+    "account_id": "tg_bot_002",
+    "platform": "telegram",
+    "handle": "@blr_techno_store",
+    "account_type": "bot",
+    "payment_handles": ["9845012345@upi"],
+    "messages": [
+      {"text": "/start Bangalore VIP Rave & Afterparty Storefront 🚀🤖 Type /menu for menu"},
+      {"text": "/menu c0c41n3 - ₹5000/g, m3ph - ₹3000/g, k3t4m1n3 - ₹2500/g 💎🍄"},
+      {"text": "/price Instant doorstep delivery in Indiranagar and Koramangala 🚚⚡"},
+      {"text": "/order Pay via USDT crypto 0x71C8022463421111928374650192837465019283 or UPI 9845012345@upi"},
+      {"text": "Join our WhatsApp invite group: wa.me/blrtechno2026"}
+    ]
+  },
+  {
+    "account_id": "ig_004",
+    "platform": "instagram",
+    "handle": "@blr.techno.store",
+    "account_type": "profile",
+    "payment_handles": [],
+    "messages": [
+      {"text": "Bangalore VIP party supplies 💎🍄 Shrooms, LSD blotters, 2cb."},
+      {"text": "Verified seller, 100% pure quality guaranteed. Order now 📲"},
+      {"text": "Check bio for official telegram store link: t.me/blr_techno_store"}
+    ]
+  },
+  {
+    "account_id": "wa_003",
+    "platform": "whatsapp",
+    "handle": "Bangalore Rave VIP",
+    "account_type": "group",
+    "payment_handles": ["9845012345@upi"],
+    "messages": [
+      {"text": "Fresh snow ❄️ and crystal meth available in Indiranagar! No risk delivery."},
+      {"text": "Seedha contact on mobile 9845012345 or DM admin for bulk order."},
+      {"text": "Express delivery across Bangalore within 45 mins 🚚⚡"}
+    ]
+  },
+  {
+    "account_id": "tg_004",
+    "platform": "telegram",
+    "handle": "@iit_jee_prep_2026",
+    "account_type": "channel",
+    "payment_handles": [],
+    "messages": [
+      {"text": "Daily math problem: definite integrals and differential equations practice sheet"},
+      {"text": "Physics mock test series starting tomorrow at 10 AM"},
+      {"text": "Join our chemistry doubt clearing discussion group"}
+    ]
   }
 ]

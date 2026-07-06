@@ -1,13 +1,132 @@
 {
-  "generated_at": "2026-07-06T18:00:12.352700+00:00",
-  "accounts_analyzed": 9,
-  "flagged_accounts": 6,
+  "generated_at": "2026-07-06T18:08:03.612462+00:00",
+  "accounts_analyzed": 13,
+  "flagged_accounts": 9,
   "model_stages": {
     "rules": true,
     "ml": true,
     "llm": false
   },
   "reports": [
+    {
+      "account_id": "tg_bot_002",
+      "platform": "telegram",
+      "handle": "@blr_techno_store",
+      "account_type": "bot",
+      "source": "file",
+      "is_probable_bot": true,
+      "risk_score": 8.34,
+      "risk_band": "CRITICAL",
+      "flagged_message_count": 3,
+      "total_messages_seen": 5,
+      "features": {
+        "max_message_score": 10.5,
+        "mean_message_score": 4.1,
+        "std_message_score": 3.6,
+        "flagged_ratio": 0.8,
+        "bot_command_ratio": 0.8,
+        "link_count": 1,
+        "backup_link_count": 0,
+        "unique_substances": 2,
+        "shared_payment_degree": 1,
+        "burstiness": 0.0,
+        "total_messages": 5
+      },
+      "evidence_sample": [
+        {
+          "text": "/menu c0c41n3 - ₹5000/g, m3ph - ₹3000/g, k3t4m1n3 - ₹2500/g 💎🍄",
+          "final_prob": 1.0,
+          "decided_by": "rules",
+          "rule_score": 10.5,
+          "ml_prob": 1.0,
+          "llm": null,
+          "matched_terms": [
+            "cocaine",
+            "ketamine"
+          ],
+          "matched_phrases": [],
+          "matched_emoji": [
+            "💎",
+            "🍄"
+          ]
+        },
+        {
+          "text": "/price Instant doorstep delivery in Indiranagar and Koramangala 🚚⚡",
+          "final_prob": 0.747,
+          "decided_by": "ml",
+          "rule_score": 4.0,
+          "ml_prob": 0.747,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "doorstep delivery"
+          ],
+          "matched_emoji": [
+            "🚚",
+            "⚡"
+          ]
+        },
+        {
+          "text": "/order Pay via USDT crypto 0x71C8022463421111928374650192837465019283 or UPI 9845012345@upi",
+          "final_prob": 0.645,
+          "decided_by": "ml",
+          "rule_score": 4.5,
+          "ml_prob": 0.645,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "usdt"
+          ],
+          "matched_emoji": []
+        }
+      ],
+      "extracted_metadata": {
+        "mobile_numbers": [
+          "9845012345"
+        ],
+        "emails": [],
+        "upi_ids": [
+          "9845012345@upi"
+        ],
+        "telegram_links": [],
+        "instagram_links": [
+          "upi"
+        ],
+        "whatsapp_links": [
+          "blrtechno2026"
+        ],
+        "crypto_addresses": [
+          "0x71C8022463421111928374650192837465019283"
+        ]
+      },
+      "message_verdicts": [
+        {
+          "text": "/start Bangalore VIP Rave & Afterparty Storefront 🚀🤖 Type /menu for menu",
+          "final_prob": 0.214,
+          "decided_by": "rules"
+        },
+        {
+          "text": "/menu c0c41n3 - ₹5000/g, m3ph - ₹3000/g, k3t4m1n3 - ₹2500/g 💎🍄",
+          "final_prob": 1.0,
+          "decided_by": "rules"
+        },
+        {
+          "text": "/price Instant doorstep delivery in Indiranagar and Koramangala 🚚⚡",
+          "final_prob": 0.747,
+          "decided_by": "ml"
+        },
+        {
+          "text": "/order Pay via USDT crypto 0x71C8022463421111928374650192837465019283 or UPI 9845012345@upi",
+          "final_prob": 0.645,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Join our WhatsApp invite group: wa.me/blrtechno2026",
+          "final_prob": 0.018,
+          "decided_by": "ml"
+        }
+      ]
+    },
     {
       "account_id": "tg_bot_001",
       "platform": "telegram",
@@ -177,6 +296,185 @@
         {
           "text": "New channel link if this group gets removed: wa.me/xxxxx",
           "final_prob": 0.286,
+          "decided_by": "rules"
+        }
+      ]
+    },
+    {
+      "account_id": "ig_004",
+      "platform": "instagram",
+      "handle": "@blr.techno.store",
+      "account_type": "profile",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 7.96,
+      "risk_band": "CRITICAL",
+      "flagged_message_count": 2,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 13.0,
+        "mean_message_score": 6.5,
+        "std_message_score": 5.31,
+        "flagged_ratio": 0.667,
+        "bot_command_ratio": 0.0,
+        "link_count": 1,
+        "backup_link_count": 0,
+        "unique_substances": 4,
+        "shared_payment_degree": 0,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [
+        {
+          "text": "Bangalore VIP party supplies 💎🍄 Shrooms, LSD blotters, 2cb.",
+          "final_prob": 1.0,
+          "decided_by": "rules",
+          "rule_score": 13.0,
+          "ml_prob": 1.0,
+          "llm": null,
+          "matched_terms": [
+            "lsd",
+            "blotters",
+            "shrooms",
+            "2cb"
+          ],
+          "matched_phrases": [],
+          "matched_emoji": [
+            "💎",
+            "🍄"
+          ]
+        },
+        {
+          "text": "Verified seller, 100% pure quality guaranteed. Order now 📲",
+          "final_prob": 0.956,
+          "decided_by": "ml",
+          "rule_score": 6.5,
+          "ml_prob": 0.956,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "quality guaranteed",
+            "order now",
+            "verified seller",
+            "100% pure"
+          ],
+          "matched_emoji": [
+            "📲"
+          ]
+        }
+      ],
+      "extracted_metadata": {
+        "mobile_numbers": [],
+        "emails": [],
+        "upi_ids": [],
+        "telegram_links": [
+          "blr_techno_store"
+        ],
+        "instagram_links": [],
+        "whatsapp_links": [],
+        "crypto_addresses": []
+      },
+      "message_verdicts": [
+        {
+          "text": "Bangalore VIP party supplies 💎🍄 Shrooms, LSD blotters, 2cb.",
+          "final_prob": 1.0,
+          "decided_by": "rules"
+        },
+        {
+          "text": "Verified seller, 100% pure quality guaranteed. Order now 📲",
+          "final_prob": 0.956,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Check bio for official telegram store link: t.me/blr_techno_store",
+          "final_prob": 0.01,
+          "decided_by": "ml"
+        }
+      ]
+    },
+    {
+      "account_id": "wa_003",
+      "platform": "whatsapp",
+      "handle": "Bangalore Rave VIP",
+      "account_type": "group",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 7.92,
+      "risk_band": "CRITICAL",
+      "flagged_message_count": 2,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 7.5,
+        "mean_message_score": 4.67,
+        "std_message_score": 2.09,
+        "flagged_ratio": 1.0,
+        "bot_command_ratio": 0.0,
+        "link_count": 0,
+        "backup_link_count": 0,
+        "unique_substances": 2,
+        "shared_payment_degree": 1,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [
+        {
+          "text": "Fresh snow ❄️ and crystal meth available in Indiranagar! No risk delivery.",
+          "final_prob": 1.0,
+          "decided_by": "rules",
+          "rule_score": 7.5,
+          "ml_prob": 0.996,
+          "llm": null,
+          "matched_terms": [
+            "crystal meth",
+            "snow"
+          ],
+          "matched_phrases": [
+            "no risk delivery"
+          ],
+          "matched_emoji": [
+            "❄️"
+          ]
+        },
+        {
+          "text": "Seedha contact on mobile 9845012345 or DM admin for bulk order.",
+          "final_prob": 0.571,
+          "decided_by": "rules",
+          "rule_score": 4.0,
+          "ml_prob": 0.266,
+          "llm": null,
+          "matched_terms": [],
+          "matched_phrases": [
+            "bulk order",
+            "seedha contact"
+          ],
+          "matched_emoji": []
+        }
+      ],
+      "extracted_metadata": {
+        "mobile_numbers": [
+          "9845012345"
+        ],
+        "emails": [],
+        "upi_ids": [],
+        "telegram_links": [],
+        "instagram_links": [],
+        "whatsapp_links": [],
+        "crypto_addresses": []
+      },
+      "message_verdicts": [
+        {
+          "text": "Fresh snow ❄️ and crystal meth available in Indiranagar! No risk delivery.",
+          "final_prob": 1.0,
+          "decided_by": "rules"
+        },
+        {
+          "text": "Seedha contact on mobile 9845012345 or DM admin for bulk order.",
+          "final_prob": 0.571,
+          "decided_by": "rules"
+        },
+        {
+          "text": "Express delivery across Bangalore within 45 mins 🚚⚡",
+          "final_prob": 0.357,
           "decided_by": "rules"
         }
       ]
@@ -717,6 +1015,58 @@
           "decided_by": "ml"
         }
       ]
+    },
+    {
+      "account_id": "tg_004",
+      "platform": "telegram",
+      "handle": "@iit_jee_prep_2026",
+      "account_type": "channel",
+      "source": "file",
+      "is_probable_bot": false,
+      "risk_score": 0.1,
+      "risk_band": "LOW",
+      "flagged_message_count": 0,
+      "total_messages_seen": 3,
+      "features": {
+        "max_message_score": 0.0,
+        "mean_message_score": 0.0,
+        "std_message_score": 0.0,
+        "flagged_ratio": 0.0,
+        "bot_command_ratio": 0.0,
+        "link_count": 0,
+        "backup_link_count": 0,
+        "unique_substances": 0,
+        "shared_payment_degree": 0,
+        "burstiness": 0.0,
+        "total_messages": 3
+      },
+      "evidence_sample": [],
+      "extracted_metadata": {
+        "mobile_numbers": [],
+        "emails": [],
+        "upi_ids": [],
+        "telegram_links": [],
+        "instagram_links": [],
+        "whatsapp_links": [],
+        "crypto_addresses": []
+      },
+      "message_verdicts": [
+        {
+          "text": "Daily math problem: definite integrals and differential equations practice sheet",
+          "final_prob": 0.004,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Physics mock test series starting tomorrow at 10 AM",
+          "final_prob": 0.014,
+          "decided_by": "ml"
+        },
+        {
+          "text": "Join our chemistry doubt clearing discussion group",
+          "final_prob": 0.015,
+          "decided_by": "ml"
+        }
+      ]
     }
   ],
   "linked_account_clusters": {
@@ -731,6 +1081,10 @@
     "nightplug@upi": [
       "ig_003",
       "tg_003"
+    ],
+    "9845012345@upi": [
+      "tg_bot_002",
+      "wa_003"
     ]
   }
 }
