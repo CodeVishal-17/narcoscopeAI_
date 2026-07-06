@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: narcoscope-backend
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+      - DEBUG=False
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID:-""}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH:-""}
+    volumes:
+      - backend-db:/app/backend
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: narcoscope-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-db:
