@@ -49,8 +49,23 @@ export default function AccountDrawer({ account, clusters, allAccounts, loading,
           </div>
         </div>
         <div className="db-kv-item">
-          <div className="db-kv-k">Source</div>
-          <div className="db-kv-v">{account.source}</div>
+          <div className="db-kv-k">Dataset Type</div>
+          <div className="db-kv-v">
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '600',
+                backgroundColor: account.source?.includes('Synthetic') || account.source === 'sample' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(6, 182, 212, 0.2)',
+                color: account.source?.includes('Synthetic') || account.source === 'sample' ? '#c084fc' : '#22d3ee',
+                border: account.source?.includes('Synthetic') || account.source === 'sample' ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(6, 182, 212, 0.4)',
+                display: 'inline-block',
+              }}
+            >
+              {account.source === 'file' || account.source === 'sample' ? '🧪 Synthetic (Model Training)' : account.source === 'telegram_live' ? '🌐 Real OSINT (Live Scrape)' : account.source}
+            </span>
+          </div>
         </div>
         {account.features?.unique_substances > 0 && (
           <div className="db-kv-item">

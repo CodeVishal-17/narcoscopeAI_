@@ -44,6 +44,23 @@ export default function AccountTable({ accounts, selectedId, onSelect }) {
                   {a.is_probable_bot && a.account_type !== "bot" && (
                     <span className="db-bot-tag">automated</span>
                   )}
+                  {a.source && (
+                    <span
+                      style={{
+                        marginLeft: '8px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        backgroundColor: a.source.includes('Synthetic') || a.source === 'sample' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(6, 182, 212, 0.2)',
+                        color: a.source.includes('Synthetic') || a.source === 'sample' ? '#c084fc' : '#22d3ee',
+                        border: a.source.includes('Synthetic') || a.source === 'sample' ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(6, 182, 212, 0.4)',
+                        display: 'inline-block',
+                      }}
+                    >
+                      {a.source === 'file' || a.source === 'sample' ? '🧪 Synthetic (Model Training)' : a.source === 'telegram_live' ? '🌐 Real OSINT (Live Scrape)' : a.source}
+                    </span>
+                  )}
                 </div>
               </td>
               <td>
