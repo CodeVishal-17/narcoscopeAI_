@@ -53,12 +53,14 @@ def score_message(text: str) -> MessageSignals:
     terms, phrases, emojis = [], [], []
 
     for term, weight in SUBSTANCE_TERMS.items():
-        if any(term in h for h in haystacks):
+        pattern = r'\b' + re.escape(term) + r'\b'
+        if any(re.search(pattern, h) for h in haystacks):
             score += weight
             terms.append(term)
 
     for phrase, weight in BEHAVIORAL_PHRASES.items():
-        if any(phrase in h for h in haystacks):
+        pattern = r'\b' + re.escape(phrase) + r'\b'
+        if any(re.search(pattern, h) for h in haystacks):
             score += weight
             phrases.append(phrase)
 
