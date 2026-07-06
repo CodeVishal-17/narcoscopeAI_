@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AccountRecord, IngestJob, LinkedCluster, ScanRun, TelegramWatch
+from .models import AccountRecord, Alert, IngestJob, LinkedCluster, ScanRun, TelegramWatch
 
 
 @admin.register(ScanRun)
@@ -30,3 +30,10 @@ class TelegramWatchAdmin(admin.ModelAdmin):
 class IngestJobAdmin(admin.ModelAdmin):
     list_display = ("id", "status", "source", "created_at", "finished_at", "result_scan_run")
     list_filter = ("status", "source")
+
+
+@admin.register(Alert)
+class AlertAdmin(admin.ModelAdmin):
+    list_display = ("id", "severity", "status", "handle", "platform", "risk_score", "created_at")
+    list_filter = ("severity", "status", "platform")
+    search_fields = ("handle",)

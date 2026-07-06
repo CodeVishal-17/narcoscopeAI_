@@ -44,4 +44,9 @@ export const api = {
   removeWatch: (id) => request(`/watchlist/${id}/`, { method: "DELETE" }),
 
   modelMetrics: () => request("/model/metrics/"),
+
+  // Alerts
+  listAlerts: (status) => request(`/alerts/${status ? `?status=${status}` : ''}`),
+  acknowledgeAlert: (id) => request(`/alerts/${id}/acknowledge/`, { method: 'POST' }),
+  dismissAlert: (id) => request(`/alerts/${id}/dismiss/`, { method: 'POST' }),
 };

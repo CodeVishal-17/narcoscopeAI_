@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import AccountRecord, IngestJob, LinkedCluster, ScanRun, TelegramWatch
+from .models import AccountRecord, Alert, IngestJob, LinkedCluster, ScanRun, TelegramWatch
 
 
 class AccountRecordSerializer(serializers.ModelSerializer):
@@ -10,6 +10,7 @@ class AccountRecordSerializer(serializers.ModelSerializer):
             "id", "account_id", "platform", "handle", "account_type", "source",
             "is_probable_bot", "risk_score", "risk_band", "flagged_message_count",
             "total_messages_seen", "features", "evidence_sample", "message_verdicts",
+            "extracted_metadata",
         ]
 
 
@@ -66,4 +67,14 @@ class IngestJobSerializer(serializers.ModelSerializer):
         fields = [
             "id", "status", "source", "targets", "created_at",
             "finished_at", "error", "result_scan_run",
+        ]
+
+
+class AlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Alert
+        fields = [
+            "id", "created_at", "severity", "status",
+            "message", "platform", "handle",
+            "risk_score", "acknowledged_at",
         ]

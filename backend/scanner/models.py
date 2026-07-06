@@ -41,6 +41,8 @@ class AccountRecord(models.Model):
     features = models.JSONField(default=dict)
     evidence_sample = models.JSONField(default=list)
     message_verdicts = models.JSONField(default=list)
+    extracted_metadata = models.JSONField(default=dict)   # mobile/email/UPI extracted from content
+
 
     class Meta:
         ordering = ["-risk_score"]
@@ -108,3 +110,41 @@ class IngestJob(models.Model):
 
     def __str__(self):
         return f"IngestJob #{self.pk} ({self.status})"
+
+
+class Alert(models.Model):
+    """
+    Generated when a scan finds a HIGH or CRITICAL account — surfaced in the
+    dashboard alert log and optionally dispatched to an external endpoint.
+    """
+
+    SEVERITY_CHOICES = [
+        ("critical", "Critical"),
+        ("high", "High"),
+    ]
+    STATUS_CHOICES = [
+        ("new", "New"),
+        ("acknowledged", "Acknowledged"),
+        ("dismissed", "Dismissed"),
+    ]
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="new")
+    account = models.ForeignKey(
+        AccountRecord, on_delete=models.CASCADE, related_name="alerts"
+    )
+    scan_run = models.ForeignKey(
+        ScanRun, on_delete=models.CASCADE, related_name="alerts"
+    )
+    message = models.TextField()
+    platform = models.CharField(max_length=30, blank=True)
+    handle = models.CharField(max_length=255, blank=True)
+    risk_score = models.FloatField(default=0.0)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Alert [{self.severity.upper()}] {self.handle} on {self.platform}"

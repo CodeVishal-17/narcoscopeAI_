@@ -100,6 +100,18 @@ SUBSTANCE_TERMS = {
     "नशा": 1.0, "माल": 1.0,
     "chitta": 3.0, "garda": 2.5, "afeem": 3.0, "smack": 3.0, "bhang": 1.5,
     "sulfa": 2.0, "brown sugar": 2.5, "nasha": 1.0,
+    # Additional synthetic drugs
+    "cocaine": 3.0, "heroin": 3.0, "crystal meth": 3.0, "methamphetamine": 3.0,
+    "ketamine": 2.5, "tramadol": 2.0, "alprazolam": 2.0, "xanax": 2.5,
+    "coke": 2.0, "crack": 2.5, "snow": 1.5, "ice": 1.5, "glass": 1.5,
+    "dope": 2.0, "gear": 1.5, "powder": 1.0, "pills": 1.5,
+    "opioids": 2.5, "fentanyl": 3.0, "morphine": 2.5, "codeine": 2.0,
+    "nitrazepam": 2.0, "clonazepam": 2.0, "diazepam": 2.0,
+    "psychedelics": 2.5, "shrooms": 2.0, "psilocybin": 3.0,
+    "dmt": 3.0, "2cb": 3.0, "mda": 3.0, "ghb": 3.0, "gbl": 3.0,
+    # Hinglish/regional
+    "bhaang": 1.5, "charas chacha": 2.5, "gaddi": 2.0, "ticker": 2.0,
+    "mephe": 3.0, "m cat": 3.0, "drone": 2.0, "bubbles": 2.0,
 }
 
 BEHAVIORAL_PHRASES = {
@@ -123,6 +135,20 @@ BEHAVIORAL_PHRASES = {
     "rate pucho": 2.0, "dm karo": 2.0, "maal hai": 2.0, "maal chahiye": 1.5,
     "setting ho jayegi": 1.5, "home delivery": 1.0, "delivery available": 1.0,
     "cash on delivery": 1.0, "discreet delivery": 1.5,
+    # Additional behavioral signals
+    "order now": 1.5, "contact us": 1.0, "bulk order": 2.0,
+    "minimum order": 1.5, "free sample": 1.5, "test delivery": 1.5,
+    "trusted seller": 1.5, "verified seller": 1.5, "100% pure": 2.0,
+    "guaranteed quality": 1.5, "no risk delivery": 2.0,
+    "door delivery": 1.5, "doorstep delivery": 1.5,
+    "express delivery": 1.0, "same day delivery": 1.5,
+    "signal me": 2.0, "wickr": 2.5, "telegram only": 2.0,
+    "crypto payment": 2.0, "btc accepted": 2.5, "usdt": 2.0,
+    "no advance": 1.5, "advance payment": 1.5,
+    "all india": 1.5, "across india": 1.5,
+    # Hindi additions
+    "bulk maal": 2.0, "thok bhav": 2.0, "seedha contact": 2.0,
+    "guarantee ke sath": 1.5, "pakka maal": 2.0,
 }
 
 EMOJI_SIGNALS = {
@@ -132,11 +158,25 @@ EMOJI_SIGNALS = {
     "🌿": 0.5,
     "💊": 1.5,
     "🚀": 0.5,
+    "💎": 1.0,  # premium/quality signal
+    "🤝": 0.5,  # deal
+    "📦": 1.0,  # delivery
+    "🚚": 1.0,  # delivery
+    "💰": 1.0,  # money/payment
+    "📲": 0.5,  # contact via phone
+    "🔒": 0.5,  # secure/discreet
+    "⚡": 0.5,  # fast delivery
+    "🧊": 1.5,  # ice/meth slang
+    "🍄": 1.5,  # shrooms
+    "🥦": 1.0,  # weed
+    "🌱": 0.5,  # weed
 }
 
 BACKUP_CHANNEL_PHRASES = [
     "backup channel", "new channel link", "if this gets banned",
     "if this group gets removed", "in case this one gets banned",
+    "join our new group", "join backup", "alternative channel",
+    "channel got banned", "group got banned",
 ]
 
 

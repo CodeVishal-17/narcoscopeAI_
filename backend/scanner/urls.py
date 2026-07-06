@@ -14,4 +14,6 @@ urlpatterns = [
     path("telegram/health/", views.TelegramHealthView.as_view(), name="telegram-health"),
     path("jobs/<int:pk>/", views.IngestJobView.as_view(), name="ingest-job"),
     path("model/metrics/", views.ModelMetricsView.as_view(), name="model-metrics"),
+    path("alerts/", views.AlertListView.as_view(), name="alert-list"),
+    path("alerts/<int:pk>/<str:action>/", views.AlertDetailView.as_view(), name="alert-detail"),
 ]

@@ -3,6 +3,7 @@
 from .normalize import normalize
 from .deobfuscate import deobfuscate, obfuscation_score
 from .language import detect_language, looks_hinglish
+from .metadata import extract_metadata, aggregate_account_metadata, ExtractedMetadata
 
 __all__ = [
     "normalize",
@@ -10,4 +11,7 @@ __all__ = [
     "obfuscation_score",
     "detect_language",
     "looks_hinglish",
+    "extract_metadata",
+    "aggregate_account_metadata",
+    "ExtractedMetadata",
 ]

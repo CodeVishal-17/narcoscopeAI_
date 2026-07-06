@@ -21,6 +21,7 @@ from .config import SAMPLE_DATA, FLAGGED_OUTPUT, risk_band
 from .ingestion import FileIngestor
 from .features.engineer import account_features
 from .model.hybrid import HybridClassifier
+from .processing.metadata import aggregate_account_metadata
 
 
 def _payment_index(accounts: list) -> dict:
@@ -81,6 +82,13 @@ def analyze(accounts: list, clf: HybridClassifier) -> dict:
             for v in flagged[:3]
         ]
 
+        # Extract identifiable metadata for triangulation
+        meta = aggregate_account_metadata(
+            [m.text for m in acc.messages],
+            bio=getattr(acc, 'bio', '')
+        )
+        metadata_dict = meta.to_dict()
+
         reports.append({
             "account_id": acc.account_id,
             "platform": acc.platform,
@@ -94,6 +102,7 @@ def analyze(accounts: list, clf: HybridClassifier) -> dict:
             "total_messages_seen": len(verdicts),
             "features": feats,
             "evidence_sample": evidence,
+            "extracted_metadata": metadata_dict,
             "message_verdicts": [
                 {"text": v.text, "final_prob": v.final_prob, "decided_by": v.decided_by}
                 for v in verdicts

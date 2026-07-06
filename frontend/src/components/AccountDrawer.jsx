@@ -1,4 +1,5 @@
 import RiskBadge from "./RiskBadge.jsx";
+import MetadataPanel from './MetadataPanel.jsx';
 
 function handleFor(accounts, accountId) {
   const match = accounts.find((a) => a.account_id === accountId);
@@ -51,6 +52,18 @@ export default function AccountDrawer({ account, clusters, allAccounts, loading,
           <div className="db-kv-k">Source</div>
           <div className="db-kv-v">{account.source}</div>
         </div>
+        {account.features?.unique_substances > 0 && (
+          <div className="db-kv-item">
+            <div className="db-kv-k">Unique substances</div>
+            <div className="db-kv-v">{account.features.unique_substances}</div>
+          </div>
+        )}
+        {account.features?.burstiness > 0 && (
+          <div className="db-kv-item">
+            <div className="db-kv-k">Burst posting</div>
+            <div className="db-kv-v" style={{color:'#f97316'}}>Detected (bot cadence)</div>
+          </div>
+        )}
       </div>
 
       <div className="db-drawer-section">Evidence · top matches</div>
@@ -85,6 +98,8 @@ export default function AccountDrawer({ account, clusters, allAccounts, loading,
           </div>
         </div>
       ))}
+
+      <MetadataPanel metadata={account.features?.extracted_metadata || null} />
 
       {linkedClusters.length > 0 && (
         <>

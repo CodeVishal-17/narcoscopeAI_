@@ -15,7 +15,7 @@ from narcoscope.ingestion.telegram_ingestor import TelegramIngestor
 from narcoscope.model.hybrid import HybridClassifier
 from narcoscope.pipeline import analyze
 
-from .models import AccountRecord, IngestJob, LinkedCluster, ScanRun, TelegramWatch
+from .models import AccountRecord, Alert, IngestJob, LinkedCluster, ScanRun, TelegramWatch
 
 
 def _persist_analysis(output: dict, source: str, source_label: str) -> ScanRun:
@@ -44,6 +44,7 @@ def _persist_analysis(output: dict, source: str, source_label: str) -> ScanRun:
                 features=r["features"],
                 evidence_sample=r["evidence_sample"],
                 message_verdicts=r["message_verdicts"],
+                extracted_metadata=r.get("extracted_metadata", {}),
             )
             for r in output["reports"]
         ])
@@ -51,7 +52,9 @@ def _persist_analysis(output: dict, source: str, source_label: str) -> ScanRun:
             LinkedCluster(scan_run=run, payment_handle=handle, account_ids=ids)
             for handle, ids in output["linked_account_clusters"].items()
         ])
+        generate_alerts(run)
     return run
+
 
 
 def run_pipeline_on_accounts(accounts: list, source: str, source_label: str) -> ScanRun:
@@ -166,6 +169,84 @@ def telegram_health() -> dict:
     }
 
 
+def generate_alerts(scan_run: ScanRun) -> list:
+    """
+    After a scan, generate Alert rows for every HIGH and CRITICAL account.
+    Also does fuzzy cross-platform handle matching — if two accounts from
+    different platforms have handles within edit-distance 2 (ignoring @,
+    dots, underscores) they are flagged as potentially the same operator.
+    """
+    import difflib
+    import re
+
+    alerts = []
+    high_accounts = scan_run.accounts.filter(risk_band__in=["HIGH", "CRITICAL"])
+
+    for acc in high_accounts:
+        severity = "critical" if acc.risk_band == "CRITICAL" else "high"
+        msg = (
+            f"{acc.risk_band} risk account detected: {acc.handle} on "
+            f"{acc.platform}. Risk score: {acc.risk_score:.2f}. "
+            f"{acc.flagged_message_count} flagged message(s) out of "
+            f"{acc.total_messages_seen} analyzed."
+        )
+        if acc.is_probable_bot:
+            msg += " Automated bot behaviour detected."
+        alert = Alert.objects.create(
+            severity=severity,
+            account=acc,
+            scan_run=scan_run,
+            message=msg,
+            platform=acc.platform,
+            handle=acc.handle,
+            risk_score=acc.risk_score,
+        )
+        alerts.append(alert)
+
+    # Cross-platform fuzzy handle matching
+    all_accounts = list(scan_run.accounts.all())
+
+    def _normalize_handle(h: str) -> str:
+        return re.sub(r'[@._\-\s]', '', h.lower())
+
+    handles = [(acc, _normalize_handle(acc.handle)) for acc in all_accounts]
+    flagged_pairs = set()
+
+    for i, (acc_a, norm_a) in enumerate(handles):
+        for j, (acc_b, norm_b) in enumerate(handles):
+            if i >= j:
+                continue
+            if acc_a.platform == acc_b.platform:
+                continue
+            if not norm_a or not norm_b:
+                continue
+            ratio = difflib.SequenceMatcher(None, norm_a, norm_b).ratio()
+            if ratio >= 0.82:  # ~82% similarity => likely same operator
+                pair_key = tuple(sorted([acc_a.id, acc_b.id]))
+                if pair_key not in flagged_pairs:
+                    flagged_pairs.add(pair_key)
+                    msg = (
+                        f"Cross-platform handle match: '{acc_a.handle}' ({acc_a.platform}) "
+                        f"\u2248 '{acc_b.handle}' ({acc_b.platform}) \u2014 "
+                        f"similarity {ratio:.0%}. Likely same operator."
+                    )
+                    # Attach to the higher-risk account
+                    main = acc_a if acc_a.risk_score >= acc_b.risk_score else acc_b
+                    severity = "critical" if main.risk_band == "CRITICAL" else "high"
+                    if main.risk_band in ("HIGH", "CRITICAL"):
+                        Alert.objects.create(
+                            severity=severity,
+                            account=main,
+                            scan_run=scan_run,
+                            message=msg,
+                            platform=main.platform,
+                            handle=f"{acc_a.handle} \u2248 {acc_b.handle}",
+                            risk_score=max(acc_a.risk_score, acc_b.risk_score),
+                        )
+
+    return alerts
+
+
 def build_dossier(account) -> dict:
     """
     Assemble a court-oriented evidence dossier for one flagged account.
@@ -216,6 +297,63 @@ def build_dossier(account) -> dict:
     generated_at = datetime.now(timezone.utc)
     dossier_id = f"NS-{account.scan_run_id}-{account.id}-{generated_at:%Y%m%d%H%M%S}"
 
+    # Extracted identifiers for triangulation
+    meta = account.extracted_metadata or {}
+    triangulation = {
+        "mobile_numbers": meta.get("mobile_numbers", []),
+        "emails": meta.get("emails", []),
+        "upi_ids": meta.get("upi_ids", []),
+        "telegram_links": meta.get("telegram_links", []),
+        "instagram_links": meta.get("instagram_links", []),
+        "whatsapp_links": meta.get("whatsapp_links", []),
+        "crypto_addresses": meta.get("crypto_addresses", []),
+        "note": (
+            "These identifiers were extracted from publicly visible content only. "
+            "IP addresses, phone numbers and email IDs registered with the platform "
+            "are NOT accessible without lawful process. Use the legal request template "
+            "below (Section 91 BNSS) to formally demand subscriber records from the platform."
+        ),
+    }
+
+    # Pre-filled legal request template for the investigating officer
+    platform_authority = {
+        "telegram": "Telegram Messenger Inc. (support@telegram.org / law enforcement portal)",
+        "instagram": "Meta Platforms Inc. (Indian LE portal: https://www.facebook.com/records)",
+        "whatsapp": "WhatsApp LLC / Meta Platforms Inc. (Indian LE portal: https://www.facebook.com/records)",
+    }.get(account.platform, f"{account.platform.title()} platform authority")
+
+    legal_request_template = (
+        f"PRODUCTION ORDER UNDER SECTION 91 BNSS (CrPC) / MLAT REQUEST\n\n"
+        f"To: {platform_authority}\n\n"
+        f"Subject: Request for subscriber records pertaining to account '{account.handle}' "
+        f"on {account.platform.title()}\n\n"
+        f"Dossier Reference: {dossier_id}\n"
+        f"Generated by: NarcoScope AI (Anti-Narcotics OSINT System)\n"
+        f"Generated at: {generated_at.strftime('%d %B %Y, %H:%M UTC')}\n\n"
+        f"Pursuant to Section 91 of the Bharatiya Nagarik Suraksha Sanhita, 2023 (BNSS), "
+        f"[and/or MLAT if foreign platform], you are requested to furnish the following "
+        f"information relating to the above account, which has been flagged for suspected "
+        f"drug trafficking activity (Risk Band: {account.risk_band}, Score: {account.risk_score:.2f}):\n\n"
+        f"  1. Full legal name and registered address of the account holder\n"
+        f"  2. Mobile number(s) and email ID(s) registered with the account\n"
+        f"  3. IP addresses used at time of account creation and during the period "
+        f"[INSERT DATE RANGE from evidence timestamps]\n"
+        f"  4. Device identifiers (IMEI, MAC, user-agent) associated with the account\n"
+        f"  5. Payment method details if any in-app transactions occurred\n\n"
+        f"OSINT identifiers found in public content (for correlation):\n"
+        f"  Mobile numbers: {', '.join(triangulation['mobile_numbers']) or 'None found in public content'}\n"
+        f"  UPI/Payment IDs: {', '.join(triangulation['upi_ids']) or 'None found in public content'}\n"
+        f"  Emails: {', '.join(triangulation['emails']) or 'None found in public content'}\n\n"
+        f"This request is made in connection with investigation of offences under the "
+        f"Narcotic Drugs and Psychotropic Substances (NDPS) Act, 1985.\n\n"
+        f"Investigating Officer: ____________________\n"
+        f"Rank / Station: ____________________\n"
+        f"Date: {generated_at.strftime('%d/%m/%Y')}\n\n"
+        f"[This template must be reviewed, signed, and submitted on official letterhead by "
+        f"the investigating officer. This document is generated by NarcoScope AI for "
+        f"investigative support only and is NOT itself a legal order.]"
+    )
+
     return {
         "dossier_id": dossier_id,
         "generated_at": generated_at.isoformat(),
@@ -232,6 +370,8 @@ def build_dossier(account) -> dict:
         },
         "evidence": evidence,
         "linked_accounts": linked,
+        "triangulation": triangulation,
+        "legal_request_template": legal_request_template,
         "certificate": (
             "This dossier was generated by NarcoScope AI from publicly accessible "
             "content. Each message below is accompanied by a SHA-256 hash computed "
@@ -245,6 +385,7 @@ def build_dossier(account) -> dict:
             "evidence."
         ),
     }
+
 
 
 def model_metrics() -> dict:
@@ -275,3 +416,26 @@ def model_metrics() -> dict:
         warnings.append(f"Class imbalance in test set (pos={pos}, neg={neg}).")
 
     return {"available": True, "reliable": not warnings, "warnings": warnings, **m}
+
+
+def list_alerts(status_filter: str | None = None, limit: int = 50) -> list:
+    qs = Alert.objects.select_related("account", "scan_run")[:limit]
+    if status_filter:
+        qs = Alert.objects.filter(status=status_filter).select_related("account", "scan_run")[:limit]
+    return list(qs)
+
+
+def acknowledge_alert(alert_id: int) -> Alert:
+    from django.utils import timezone
+    alert = Alert.objects.get(pk=alert_id)
+    alert.status = "acknowledged"
+    alert.acknowledged_at = timezone.now()
+    alert.save(update_fields=["status", "acknowledged_at"])
+    return alert
+
+
+def dismiss_alert(alert_id: int) -> Alert:
+    alert = Alert.objects.get(pk=alert_id)
+    alert.status = "dismissed"
+    alert.save(update_fields=["status"])
+    return alert

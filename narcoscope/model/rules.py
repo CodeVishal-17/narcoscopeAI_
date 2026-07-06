@@ -18,6 +18,7 @@ from ..config import (
     BACKUP_CHANNEL_PHRASES,
 )
 from ..processing import normalize, deobfuscate
+from ..processing.metadata import extract_metadata
 
 BOT_COMMAND_PATTERN = re.compile(r"/(start|menu|price|order|catalog|stock)\b", re.IGNORECASE)
 PRICE_PATTERN = re.compile(
@@ -38,6 +39,7 @@ class MessageSignals:
     has_price_pattern: bool = False
     has_backup_phrase: bool = False
     external_links: list = field(default_factory=list)
+    extracted_metadata: dict = field(default_factory=dict)
 
 
 def score_message(text: str) -> MessageSignals:
@@ -77,6 +79,14 @@ def score_message(text: str) -> MessageSignals:
     if has_backup:
         score += 1.0
 
+    meta = extract_metadata(text)
+    if not meta.is_empty():
+        # Boost score if mobile/UPI found alongside drug terms
+        if terms and (meta.mobile_numbers or meta.upi_ids):
+            score += 1.0
+        if meta.crypto_addresses:
+            score += 1.5
+
     return MessageSignals(
         text=text,
         score=round(score, 2),
@@ -87,4 +97,5 @@ def score_message(text: str) -> MessageSignals:
         has_price_pattern=has_price,
         has_backup_phrase=has_backup,
         external_links=links,
+        extracted_metadata=meta.to_dict(),
     )

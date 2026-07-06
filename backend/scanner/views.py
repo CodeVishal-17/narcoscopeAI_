@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import services
-from .models import AccountRecord, IngestJob, ScanRun, TelegramWatch
+from .models import AccountRecord, Alert, IngestJob, ScanRun, TelegramWatch
 from .serializers import (
     AccountRecordSerializer,
     IngestJobSerializer,
@@ -109,3 +109,28 @@ class TelegramHealthView(APIView):
 class ModelMetricsView(APIView):
     def get(self, request):
         return Response(services.model_metrics())
+
+
+class AlertListView(APIView):
+    """GET /api/alerts/ - returns the most recent 50 alerts."""
+    def get(self, request):
+        from .serializers import AlertSerializer
+        status_filter = request.query_params.get("status")
+        alerts = services.list_alerts(status_filter=status_filter)
+        return Response(AlertSerializer(alerts, many=True).data)
+
+
+class AlertDetailView(APIView):
+    """POST /api/alerts/<pk>/acknowledge/ or /dismiss/"""
+    def post(self, request, pk, action):
+        from .serializers import AlertSerializer
+        try:
+            if action == "acknowledge":
+                alert = services.acknowledge_alert(pk)
+            elif action == "dismiss":
+                alert = services.dismiss_alert(pk)
+            else:
+                return Response({"detail": "Unknown action."}, status=400)
+            return Response(AlertSerializer(alert).data)
+        except Exception as exc:
+            return Response({"detail": str(exc)}, status=400)

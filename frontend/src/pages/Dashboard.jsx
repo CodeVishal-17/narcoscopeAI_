@@ -6,6 +6,7 @@ import AccountDrawer from "../components/AccountDrawer.jsx";
 import NetworkGraph from "../components/NetworkGraph.jsx";
 import TelegramPanel from "../components/TelegramPanel.jsx";
 import ModelMetricsPanel from "../components/ModelMetricsPanel.jsx";
+import AlertPanel from '../components/AlertPanel.jsx';
 import { printDossier } from "../utils/dossier.js";
 import "./Dashboard.css";
 
@@ -65,6 +66,7 @@ export default function Dashboard() {
   const [watchlist, setWatchlist] = useState([]);
   const [job, setJob] = useState(null);
   const [metrics, setMetrics] = useState(null);
+  const [alerts, setAlerts] = useState([]);
   const [runningSample, setRunningSample] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -86,6 +88,7 @@ export default function Dashboard() {
     api.telegramHealth().then(setHealth).catch(() => setHealth({ ready: false }));
     api.listWatchlist().then(setWatchlist).catch(() => {});
     api.modelMetrics().then(setMetrics).catch(() => setMetrics(null));
+    api.listAlerts().then(setAlerts).catch(() => setAlerts([]));
   }, []);
 
   useEffect(() => {
@@ -172,6 +175,16 @@ export default function Dashboard() {
   const handleRemoveWatch = async (id) => {
     await api.removeWatch(id);
     setWatchlist((prev) => prev.filter((w) => w.id !== id));
+  };
+
+  const handleAcknowledge = async (id) => {
+    await api.acknowledgeAlert(id);
+    api.listAlerts().then(setAlerts).catch(() => {});
+  };
+
+  const handleDismiss = async (id) => {
+    await api.dismissAlert(id);
+    api.listAlerts().then(setAlerts).catch(() => {});
   };
 
   if (scanError && !scan) {
@@ -328,6 +341,14 @@ export default function Dashboard() {
             onScan={handleTelegramScan}
             onAddWatch={handleAddWatch}
             onRemoveWatch={handleRemoveWatch}
+          />
+        </div>
+
+        <div className="db-nav-group">
+          <AlertPanel
+            alerts={alerts}
+            onAcknowledge={handleAcknowledge}
+            onDismiss={handleDismiss}
           />
         </div>
 
